@@ -62,6 +62,6 @@ Introduce a 10% fee on the cost of each inference.
 
 Question: should this be charged from the client's stake in addition to the server's charge, or deducted from the server's charge? Maybe the latter, as servers are the ones profiting so they should be the ones deducting.
 
-## TODO:
+## Storage
 
-- where to store data (prompts and responses)
+TODO

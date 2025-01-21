@@ -63,8 +63,6 @@ We could also consider weighting feedback by account balance at some point, but 
 
 ## How do we avoid users being charged for bad responses?
 
-For now we don't.
+For now, we don't. Users should rely on reputation system metrics to minimize the chances of encountering a malicious server.
 
 Because each transaction should be small, and servers have to retrieve payment explicitly by claiming they have submitted a successful response, avoiding users being charged for bad responses may not be a relevant enough issue to address.
-
-Users can rely on reputation system metrics to avoid malicious servers, at least for the most part
