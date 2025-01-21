@@ -35,16 +35,16 @@ The main problem with decentralized inference is we can't trust servers to run t
 This is countered by a reputation system where the following metrics are tracked for each server:
 
 - success ratio
-- preference %
+- preference ratio
 
 ### Success ratio
 
 If a response is obviously bad or missing entirely, users can flag it, affecting the server's success ratio.
 A response is counted as successful by default unless the user flags it.
 
-### Preference %
+### Preference ratio
 
-Preference % comes from an app feature: users can run two inferences at the same time and with the same prompt, obtaining responses from two different servers. They can then choose which response they prefer.
+Preference ratio comes from an app feature: users can run two inferences at the same time and with the same prompt, obtaining responses from two different servers. They can then choose which response they prefer.
 
 This addresses the issue of judging finer model quality, verifying that servers are running the models they claim to be.
 
