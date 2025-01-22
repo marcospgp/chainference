@@ -1,13 +1,15 @@
 # Reputation system
 
-_Note: This reputation system draft is meant to be adapted as it interfaces with and receives feedback from the real world._
+_Note: This is a draft, meant to be adapted as it interfaces with and receives feedback from the real world._
 
 The main problem with decentralized inference is we can't trust servers to run the models they claim to, or to run models at all. Left unchecked, they could spam lower-effort responses and collect payments.
 
-This is countered by a reputation system where the following metrics are tracked for each server:
+This is countered with a reputation system where the following metrics are tracked for each server:
 
 - success ratio
 - preference ratio
+
+By filtering servers with minimum values for these metrics, users can minimize the odds of encountering a malicious server.
 
 ## Success ratio
 
@@ -37,21 +39,18 @@ Users thus submit a comparison transaction **after** the fact, which:
 
 ## How do we avoid malicious user feedback
 
-Users running a server may want to falsely lower the reputation of competing servers, by:
+Users running a server would be incentivized to lower the reputation of competitors by submitting false feedback.
 
-- falsely flagging responses
-- submitting false comparisons preferring their own servers over competitors
+This incentive is however weakened by how each transaction costs money. The more solid a server's reputation, the more expensive it would be to affect it.
 
-The incentive for this is weak from the start simply because each transaction costs money.
-
-The more solid a server's reputation, the more expensive it would be to affect it. However, this means younger servers may be more vulnerable to this kind of attack.
+However, this means younger servers may be more vulnerable to this kind of attack.
 
 This could be circumvented by allowing servers to retract flagged responses in exchange for returning the payment. This however introduces strong incentives for:
 
 - malicious users to flag every response, in the chance it is made free of charge
 - malicious servers to retract every flagged response, in order to maintain an undeserved pristine reputation
 
-Circumventing the first bad incentive by allowing servers to blacklist users would only strengthen the second, so it is not a good idea.
+Circumventing the first bad incentive by allowing servers to blacklist users would only strengthen the second, so it is also not a good idea.
 
 Thankfully, we may be able to circumvent this altogether: because only younger servers with weaker reputations are vulnerable to false flag attacks, these can be defended by simply restarting the server with a new account.
 
@@ -65,4 +64,6 @@ We could also consider weighting feedback by account balance at some point, but 
 
 For now, we don't. Users should rely on reputation system metrics to minimize the chances of encountering a malicious server.
 
-Because each transaction should be small, and servers have to retrieve payment explicitly by claiming they have submitted a successful response, avoiding users being charged for bad responses may not be a relevant enough issue to address.
+Since servers have to retrieve payment explicitly by claiming they have submitted a successful response, this would only happen if a user encountered a malicious server, the odds for which we already try to minimize.
+
+And because each transaction should be small, this issue would have a low impact even in the small chance it occurs.
