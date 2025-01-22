@@ -11,22 +11,26 @@ Cheaper because unrestricted competition drives prices down to healthy profit ma
 ## How it works
 
 1. Servers publish availability on-chain
-2. Clients publish inference requests on-chain
-3. A server locks an inference request and begins sending data to the requesting client
-4. When done, the server claims payment. Remainder is returned to client.
+2. Clients publish inference requests on-chain, staking maximum desired cost
+3. A server locks the inference request on-chain
+4. Server streams response to client off-chain
+5. Server claims payment on-chain, with remainder returned to client
 
-### Servers publish availability
+### 1. Servers publish availability on-chain
 
-Servers publish availability by sending a transaction to a smart contract, including:
+Servers publish availability by sending a transaction to a smart contract, including a list of models available for inference (hugging face IDs) and price per token for each.
 
-- Models available for inference (list of hugging face IDs) and price per token for each
-- Public key for the user to encrypt the prompt with (see [privacy](#privacy))
+### 2. Clients publish inference requests on-chain
 
-### Clients publish inference requests
+Clients publish inference requests on chain also by sending a transaction to a smart contract.
 
-Clients publish inference requests on chain (smart contract?) including:
+They don't send requests directly to servers because the maximum cost must be staked on-chain to ensure payment.
 
-- [Filtering criteria for server](#filtering-criteria)
+An inference request includes:
+
+- Filtering criteria for server
+  - Minimum values for metrics from [reputation system](./docs/reputation-system.md)
+  - Minimum total completed inferences
 - Prompt
 - Desired model
 - SOL stake of maximum cost
@@ -41,11 +45,6 @@ Clients publish inference requests on chain (smart contract?) including:
 
 Malicious behavior is disincentivized through a [reputation system](./docs/reputation-system.md).
 
-## Filtering criteria
-
-- Minimum values for metrics from [reputation system](./docs/reputation-system.md)
-- Minimum total completed inferences
-
 ## Response streaming
 
 Response streaming means the client can see the response being generated in real time, like with ChatGPT and other popular AI assistants.
@@ -57,18 +56,6 @@ If this is too expensive or for some reason impractical, we need to find an off-
 Server may support off-chain response streaming perhaps.
 But could they just keep updating the same account with more and more content?
 
-## Privacy
-
-Prompt and response data stored on-chain is encrypted.
-
-Servers send a unique public key to each client that it can use to encrypt prompts.
-
-Conversely, clients send a unique public key to each server that it can use to encrypt responses.
-
-This way, only the client and server that participate in an inference transaction are able to see the prompt and response.
-
-For clients to be able to decrypt their past prompts based on chain data alone, they also store the server-provided public keys alongside the prompt, except first encrypting them with their private key.
-
 ## Monetization
 
 We can introduce a fee, such as 10%, on the cost of each inference through the smart contract at some point.
@@ -79,9 +66,28 @@ Question: should this be charged from the client's stake in addition to the serv
 
 TODO
 
+Could be IPFS/filecoin or arweave
+
 ## Website
 
 Chainference will have a centralized website with:
 
 - List of active servers and their details
 - List of models and their details such as pricing and server availability
+
+## Solana facts
+
+- Fees are cheap, with $0.01 being enough for around 8k transactions at the base fee with a SOL value of $250. Prioritization fees are almost negligible at an average of ~1 lamport (1e-9 SOL).
+- Storage is expensive, with a cost of ~7 SOL per MB ($1750 at $250 SOL price). This value is however fully recoverable on deletion.
+
+## Anonymity
+
+Prompts and responses are only visible to each client and server engaging in a transaction.
+
+However, anonymity could be enhanced by using disposable accounts to submit prompts with.
+
+To avoid tracing back to the real wallet, a centralized place could be creating these disposable wallets for everyone, perhaps the chainference smart contract itself.
+
+However, servers can still associate prompts to the address they are sending the response to.
+
+So the possibility of users creating temporary addresses to receive responses at should be investigated - some sort of proxying.
