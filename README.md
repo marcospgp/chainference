@@ -10,11 +10,12 @@ Cheaper because unrestricted competition drives prices down to healthy profit ma
 
 ## How it works
 
-1. Servers publish availability on-chain
-2. Clients publish inference requests on-chain, staking maximum desired cost
-3. A server locks the inference request on-chain
-4. Server streams response to client off-chain
-5. Server claims payment on-chain, with remainder returned to client
+1. [Servers publish availability on-chain](#1-servers-publish-availability-on-chain)
+2. [Clients publish inference requests on-chain, staking maximum desired cost](#2-clients-publish-inference-requests-on-chain)
+3. [A server locks the inference request on-chain](#3-a-server-locks-the-inference-request-on-chain)
+4. [Client sends prompt to server off-chain](#4-client-sends-prompt-to-server-off-chain)
+5. [Server streams response to client off-chain](#5-server-streams-response-to-client-off-chain)
+6. [Server claims payment on-chain, with remainder returned to client](#6-server-claims-payment-on-chain)
 
 ### 1. Servers publish availability on-chain
 
@@ -31,34 +32,45 @@ An inference request includes:
 - Filtering criteria for server
   - Minimum values for metrics from [reputation system](./docs/reputation-system.md)
   - Minimum total completed inferences
-- Prompt
 - Desired model
 - SOL stake of maximum cost
-- Maximum time for inference (time after which the stake is returned to the client if the server that locked the request has not yet posted a response) (maybe hide for now and default to 5 minutes?)
-- List of accounts of desired servers (the only ones allowed to lock down the request)
+- Peer to peer address for server to stream response to
 
-1. A server included in the desired servers list for a request sees it, locks it down, and when the locking is successful begins inference.
-1. Server creates response account on-chain with first token, then updates it with more data as it becomes available.
-1. When inference is finished, server claims the cost of inference and the remainder is returned to the client's account.
+### 3. A server locks the inference request on-chain
+
+Servers lock inference requests, once again, by sending a transaction to a smart contract.
+
+This transaction includes the peer to peer address the client should send the prompt to.
+
+### 4. Client sends prompt to server off-chain
+
+The client then sends the prompt to the provided peer to peer address.
+
+This should be encrypted - there may be encryption built into the peer to peer library or protocol we end up using, otherwise we may have client and server sharing public keys during the request submitting and request locking process.
+
+### 5. Server streams response to client off-chain
+
+After receiving the prompt, the server streams the response to the peer to peer address previously provided by the client.
+
+This response, similarly to the prompt, should also be encrypted.
+
+### 6. Server claims payment on-chain
+
+When a server finishes responding to an inference request, it can charge the corresponding cost from the amount previously staked by the client, again by submitting a transaction to a smart contract.
+
+After locking an inference request, servers have a 1 hour limit to claim payment. If they don't, the request is cancelled and the stake is fully returned to the user.
+
+This should be a rare case, as there is no incentive for servers to not claim payment on a request, malicious or not.
+
+This limit does handle the case where a benevolent server fails to respond to a request. The server may still get flagged by the client regardless, and likely before this time limit is reached, affecting its reputation.
 
 ## Reputation system
 
 Malicious behavior is disincentivized through a [reputation system](./docs/reputation-system.md).
 
-## Response streaming
-
-Response streaming means the client can see the response being generated in real time, like with ChatGPT and other popular AI assistants.
-
-Option 1: Simply update the response account on-chain with the latest tokens of the response.
-
-If this is too expensive or for some reason impractical, we need to find an off-chain way of doing response streaming.
-
-Server may support off-chain response streaming perhaps.
-But could they just keep updating the same account with more and more content?
-
 ## Monetization
 
-We can introduce a fee, such as 10%, on the cost of each inference through the smart contract at some point.
+We can introduce a fee (maybe around 10%) on the cost of each inference through the smart contract at some point in the future.
 
 Question: should this be charged from the client's stake in addition to the server's charge, or deducted from the server's charge? Maybe the latter, as servers are the ones profiting so they should be the ones deducting.
 
