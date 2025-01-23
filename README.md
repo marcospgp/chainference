@@ -1,4 +1,6 @@
-# OpenInference
+# Chainference
+
+[UI mockup in Figma](https://www.figma.com/design/ETdGpFo1859B8otLt4J8GH/chainference?node-id=8-2&t=12OrDJfxmJm9XZ8q-1)
 
 Decentralized inference on the Solana chain.
 
