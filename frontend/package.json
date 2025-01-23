@@ -1,0 +1,18 @@
+{
+  "name": "react-bun-app",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun build ./src/index.tsx --outfile ./public/bundle.js --watch & bunx serve public",
+    "build": "bun build ./src/index.tsx --outfile ./public/bundle.js"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "typescript": "^5.0.0"
+  }
+}
