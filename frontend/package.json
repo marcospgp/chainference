@@ -8,6 +8,11 @@
 		"build": "bun build src/index.html --outdir build --asset-naming \"[name].[ext]\" --chunk-naming \"[name].[ext]\""
 	},
 	"devDependencies": {
+    "@mantine/core": "^7.16.1",
+    "@mantine/hooks": "^7.16.1",
+    "@reown/appkit": "^1.6.5",
+    "@reown/appkit-adapter-solana": "^1.6.5",
+    "@solana/wallet-adapter-wallets": "^0.19.32",
 		"@types/bun": "latest",
 		"@types/react": "^18.2.0",
 		"@types/react-dom": "^18.2.0",
