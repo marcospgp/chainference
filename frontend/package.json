@@ -3,14 +3,16 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "bun build ./src/index.tsx --outfile ./public/bundle.js --watch & bunx serve public",
-    "build": "bun build ./src/index.tsx --outfile ./public/bundle.js"
+    "dev": "NODE_ENV=development bun build --experimental-html --experimental-css src/index.html --outdir build --watch --asset-naming \"[name].[ext]\" --chunk-naming \"[name].[ext]\"",
+    "start": "bun run --watch server.ts",
+    "build": "bun build --experimental-html --experimental-css src/index.html --outdir build --asset-naming \"[name].[ext]\" --chunk-naming \"[name].[ext]\""
   },
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@types/bun": "^1.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "typescript": "^5.0.0"
