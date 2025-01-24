@@ -1,13 +1,109 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+:root {
+  --raisin-black: #141421ff;
+  --tekhelet: #4d258aff;
+  --white-smoke: #f5f5f5ff;
+
+  --color-background: var(--raisin-black);
+  --color-primary: var(--tekhelet);
+  --color-text: var(--white-smoke);
+
+  --font-base: "Noto Sans", sans-serif;
+  --font-logo: "JetBrains Mono", serif;
+  --font-xs: 0.25rem;
+  --font-s: 0.5rem;
+  --font-m: 1rem;
+  --font-l: 1.5rem;
+  --font-xl: 2.3rem;
+
+  --space-xs: 0.25rem;
+  --space-s: 0.5rem;
+  --space-m: 1rem;
+  --space-l: 2rem;
+  --space-xl: 4rem;
+
+  /* Customize Mantine variables */
+  --mantine-primary-color-filled: var(--color-primary);
+  --mantine-primary-color-filled-hover: color-mix(
+    in srgb,
+    var(--color-primary),
+    white 20%
+  );
+  --mantine-primary-color-light: var(--color-primary);
+  --mantine-primary-color-light-hover: color-mix(
+    in srgb,
+    var(--color-primary),
+    white 20%
+  );
+  --mantine-primary-color-light-color: var(--color-primary);
+  /* Make these pink because I suspect they're not actually needed. If so we can remove them. */
+  --mantine-primary-color-0: rgb(255, 0, 225);
+  --mantine-primary-color-1: rgb(255, 0, 225);
+  --mantine-primary-color-2: rgb(255, 0, 225);
+  --mantine-primary-color-3: rgb(255, 0, 225);
+  --mantine-primary-color-4: rgb(255, 0, 225);
+  --mantine-primary-color-5: rgb(255, 0, 225);
+  --mantine-primary-color-6: rgb(255, 0, 225);
+  --mantine-primary-color-7: rgb(255, 0, 225);
+  --mantine-primary-color-8: rgb(255, 0, 225);
+  --mantine-primary-color-9: rgb(255, 0, 225);
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-base);
+  background-color: var(--color-1);
+  color: var(--color-text);
+}
+
+.navbar {
+  padding: var(--space-l);
+  font-family: var(--font-logo);
+
+  a {
+    color: var(--color-primary);
+    text-decoration: none;
+
+    .navbar-logo {
+      position: relative; /* Anchor for child absolutely positioned elements. */
+
+      h1 {
+        margin: 0;
+        font-size: var(--font-xl);
+      }
+
+      h1:nth-child(1) {
+        position: absolute;
+        left: var(--space-l);
+        bottom: var(--space-m);
+        color: color-mix(in srgb, var(--color-text), black 80%);
+        z-index: 1;
+      }
+
+      h1:nth-child(2) {
+        position: absolute;
+        left: var(--space-m);
+        bottom: var(--space-s);
+        color: color-mix(in srgb, var(--color-text), black 60%);
+        z-index: 2;
+      }
+
+      h1:nth-child(3) {
+        color: var(--color-text);
+        position: relative; /* For z-index to work */
+        z-index: 3;
+      }
+    }
+  }
 }
