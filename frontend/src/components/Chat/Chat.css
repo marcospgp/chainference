@@ -1,6 +1,17 @@
+.prompt {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
 .prompt-box {
   display: flex;
   flex-direction: column;
+
+  margin-bottom: var(--space-xxl);
 
   padding: var(--space-m);
   border-radius: var(--border-radius);

@@ -1,31 +1,35 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { Button, MantineProvider, Textarea, createTheme } from "@mantine/core";
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { MantineProvider, createTheme } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 
-import "@mantine/core/styles.css";
-import "./index.css";
-import { IoSendSharp } from "react-icons/io5";
-import Navbar from "./components/Navbar/Navbar";
-import Chat from "./components/Chat/Chat";
-import ChatHistory from "./components/ChatHistory/ChatHistory";
+import '@mantine/core/styles.css';
+import './index.css';
+import Navbar from './components/Navbar/Navbar';
+import Chat from './components/Chat/Chat';
+import ChatHistory from './components/ChatHistory/ChatHistory';
 
-const rootElement = document.getElementById("root");
+const App = () => {
+  const [opened, { open, close }] = useDisclosure(false);
 
-const theme = createTheme({
-  // We don't override theme variables here - we do it in the main CSS file instead,
-  // using CSS variables directly.
-});
+  return (
+    <MantineProvider theme={createTheme({})} defaultColorScheme='dark'>
+      <Navbar onMenuClick={open} />
+      <div className='main'>
+        <div className='chat-container'>
+          <ChatHistory opened={opened} onClose={close} />
+          <Chat />
+        </div>
+      </div>
+    </MantineProvider>
+  );
+};
 
+const rootElement = document.getElementById('root');
 const root = createRoot(rootElement!);
 
 root.render(
   <StrictMode>
-    <MantineProvider theme={theme} defaultColorScheme="dark">
-      <Navbar />
-      <div className="main">
-        <Chat />
-        <ChatHistory />
-      </div>
-    </MantineProvider>
+    <App />
   </StrictMode>
 );
