@@ -1,0 +1,27 @@
+.prompt-box {
+  display: flex;
+  flex-direction: column;
+
+  padding: var(--space-m);
+  border-radius: var(--border-radius);
+  background-color: var(--color-background-alt);
+
+  .prompt-input {
+    display: flex;
+
+    textarea {
+      width: 450px;
+      height: 75px;
+
+      font-family: var(--font-logo) !important;
+    }
+
+    svg {
+      font-size: var(--font-l);
+    }
+  }
+
+  span {
+    font-size: var(--font-s);
+  }
+}

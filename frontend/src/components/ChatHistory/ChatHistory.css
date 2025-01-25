@@ -1,0 +1,11 @@
+.chat-history {
+  position: absolute;
+  top: -100px;
+  max-width: 350px;
+  left: 0;
+  padding: var(--space-l);
+  background-color: var(--color-background);
+  font-family: var(--font-logo);
+  white-space: nowrap;
+  font-size: var(--font-s);
+}
