@@ -107,3 +107,9 @@ body {
     }
   }
 }
+
+.prompt-box {
+  h1 {
+    font-family: var(--font-logo);
+  }
+}

@@ -26,6 +26,7 @@ root.render(
           </div>
         </a>
       </div>
+      <div className="prompt-box">{/* <h1>Prompt the blockchain</h1> */}</div>
     </MantineProvider>
   </StrictMode>
 );
