@@ -1,10 +1,6 @@
 :root {
-  --raisin-black: ;
-  --tekhelet: ;
-  --white-smoke: ;
-
   --color-background: #141421ff;
-  --color-background-alt: ;
+  --color-background-alt: #1d1d20;
   --color-primary: #4d258aff;
   --color-text: #f5f5f5ff;
 
@@ -21,6 +17,8 @@
   --space-m: 1rem;
   --space-l: 2rem;
   --space-xl: 4rem;
+
+  --border-radius: 1rem;
 
   /* Customize Mantine variables */
   --mantine-primary-color-filled: var(--color-primary);
@@ -114,12 +112,25 @@ body {
   align-items: center;
   justify-content: center;
 
+  position: relative;
+  top: 200px;
+
   .prompt-box {
     .prompt-input {
+      display: flex;
+
+      padding: var(--space-m);
+      border-radius: var(--border-radius);
       background-color: var(--color-background-alt);
 
       textarea {
+        width: 450px;
+
         font-family: var(--font-logo) !important;
+      }
+
+      svg {
+        font-size: var(--font-l);
       }
     }
   }

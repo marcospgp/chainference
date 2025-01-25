@@ -1,9 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { MantineProvider, Textarea, createTheme } from "@mantine/core";
+import { Button, MantineProvider, Textarea, createTheme } from "@mantine/core";
 
 import "@mantine/core/styles.css";
 import "./index.css";
+import { IoSendSharp } from "react-icons/io5";
 
 const rootElement = document.getElementById("root");
 
@@ -31,6 +32,9 @@ root.render(
           <h1>Prompt the blockchain</h1>
           <div className="prompt-input">
             <Textarea variant="unstyled" placeholder="Why is the sky blue?" />
+            <Button variant="default">
+              <IoSendSharp />
+            </Button>
           </div>
         </div>
       </div>
