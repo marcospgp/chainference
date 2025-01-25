@@ -2,9 +2,17 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  justify-content: center;
-  align-items: center;
   height: 100%;
+}
+
+.prompt.has-messages {
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.prompt.empty {
+  align-items: center;
+  justify-content: center;
 }
 
 .prompt-box {
@@ -13,26 +21,104 @@
 
   margin-bottom: var(--space-xxl);
 
-  padding: var(--space-m);
+  padding-top: var(--space-m);
+  padding-bottom: var(--space-m);
+  padding-left: var(--space-l);
+  padding-right: var(--space-l);
   border-radius: var(--border-radius);
   background-color: var(--color-background-alt);
 
+  .prompt-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+
+    .settings-icon {
+      font-size: var(--font-l);
+      color: var(--color-text);
+      cursor: pointer;
+      transition: color 0.2s ease;
+      width: var(--space-m);
+      height: var(--space-m);
+
+      &:hover {
+        color: var(--color-primary);
+      }
+    }
+  }
+
   .prompt-input {
     display: flex;
+    align-items: center;
+    gap: var(--space-m);
 
     textarea {
-      width: 450px;
+      width: var(--text-area-width);
       height: 75px;
-
       font-family: var(--font-logo) !important;
     }
 
-    svg {
+    .send-icon {
       font-size: var(--font-l);
+      color: var(--color-text);
+      cursor: pointer;
+      transition: color 0.2s ease;
+
+      &:hover {
+        color: var(--color-primary);
+      }
     }
   }
 
   span {
     font-size: var(--font-s);
+  }
+
+  .prompt-title {
+    align-self: flex-start;
+  }
+}
+
+.messages-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: var(--text-area-width);
+  margin-bottom: var(--space-l);
+  gap: var(--space-m);
+  padding: var(--space-m);
+}
+
+.message {
+  width: fit-content;
+  max-width: calc(var(--text-area-width) / 3);
+  background-color: var(--color-primary);
+  padding: var(--space-m);
+  border-radius: var(--border-radius);
+  word-wrap: break-word;
+}
+
+.message.response {
+  align-self: flex-start;
+}
+
+.message:not(.response) {
+  align-self: flex-end;
+}
+
+.typing-indicator {
+  display: inline-block;
+  margin-left: var(--space-s);
+  animation: typing 1.4s infinite;
+}
+
+@keyframes typing {
+  0%,
+  20% {
+    opacity: 0;
+  }
+  21%,
+  100% {
+    opacity: 1;
   }
 }
