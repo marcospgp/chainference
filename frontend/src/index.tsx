@@ -5,6 +5,9 @@ import { Button, MantineProvider, Textarea, createTheme } from "@mantine/core";
 import "@mantine/core/styles.css";
 import "./index.css";
 import { IoSendSharp } from "react-icons/io5";
+import Navbar from "./components/Navbar/Navbar";
+import Chat from "./components/Chat/Chat";
+import ChatHistory from "./components/ChatHistory/ChatHistory";
 
 const rootElement = document.getElementById("root");
 
@@ -18,25 +21,10 @@ const root = createRoot(rootElement!);
 root.render(
   <StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="dark">
-      <div className="navbar">
-        <a href="/">
-          <div className="navbar-logo">
-            <h1>Chainference</h1>
-            <h1>Chainference</h1>
-            <h1>Chainference</h1>
-          </div>
-        </a>
-      </div>
+      <Navbar />
       <div className="main">
-        <div className="prompt-box">
-          <h1>Prompt the blockchain</h1>
-          <div className="prompt-input">
-            <Textarea variant="unstyled" placeholder="Why is the sky blue?" />
-            <Button variant="default">
-              <IoSendSharp />
-            </Button>
-          </div>
-        </div>
+        <Chat />
+        <ChatHistory />
       </div>
     </MantineProvider>
   </StrictMode>

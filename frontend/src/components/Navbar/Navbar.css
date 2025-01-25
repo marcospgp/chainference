@@ -1,0 +1,49 @@
+.navbar {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+
+  padding: var(--space-l);
+  font-family: var(--font-logo);
+
+  a {
+    color: var(--color-primary);
+    text-decoration: none;
+
+    .navbar-logo {
+      position: relative; /* Anchor for child absolutely positioned elements. */
+
+      h1 {
+        margin: 0;
+        font-size: var(--font-xl);
+      }
+
+      h1:nth-child(1) {
+        position: absolute;
+        left: var(--space-l);
+        bottom: var(--space-m);
+        color: color-mix(in srgb, var(--color-text), black 80%);
+        z-index: 1;
+      }
+
+      h1:nth-child(2) {
+        position: absolute;
+        left: var(--space-m);
+        bottom: var(--space-s);
+        color: color-mix(in srgb, var(--color-text), black 60%);
+        z-index: 2;
+      }
+
+      h1:nth-child(3) {
+        color: var(--color-text);
+        position: relative; /* For z-index to work */
+        z-index: 3;
+      }
+    }
+  }
+
+  .wallet button {
+    /* TODO: this doesn't work because button is inside shadow DOM */
+    background-color: var(--color-primary);
+  }
+}

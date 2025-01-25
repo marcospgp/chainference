@@ -1,5 +1,5 @@
 :root {
-  --color-background: #141421ff;
+  --color-background: #0e1014;
   --color-background-alt: #1d1d20;
   --color-primary: #4d258aff;
   --color-text: #f5f5f5ff;
@@ -7,7 +7,7 @@
   --font-base: "Noto Sans", sans-serif;
   --font-logo: "JetBrains Mono", serif;
   --font-xs: 0.25rem;
-  --font-s: 0.5rem;
+  --font-s: 0.9rem;
   --font-m: 1rem;
   --font-l: 1.5rem;
   --font-xl: 2rem;
@@ -62,76 +62,15 @@ body,
 
 body {
   font-family: var(--font-base);
-  background-color: var(--color-1);
+  background-color: var(--color-background);
   color: var(--color-text);
 }
 
-.navbar {
-  padding: var(--space-l);
-  font-family: var(--font-logo);
-
-  a {
-    color: var(--color-primary);
-    text-decoration: none;
-
-    .navbar-logo {
-      position: relative; /* Anchor for child absolutely positioned elements. */
-
-      h1 {
-        margin: 0;
-        font-size: var(--font-xl);
-      }
-
-      h1:nth-child(1) {
-        position: absolute;
-        left: var(--space-l);
-        bottom: var(--space-m);
-        color: color-mix(in srgb, var(--color-text), black 80%);
-        z-index: 1;
-      }
-
-      h1:nth-child(2) {
-        position: absolute;
-        left: var(--space-m);
-        bottom: var(--space-s);
-        color: color-mix(in srgb, var(--color-text), black 60%);
-        z-index: 2;
-      }
-
-      h1:nth-child(3) {
-        color: var(--color-text);
-        position: relative; /* For z-index to work */
-        z-index: 3;
-      }
-    }
-  }
-}
-
 .main {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
   position: relative;
   top: 200px;
 
-  .prompt-box {
-    .prompt-input {
-      display: flex;
-
-      padding: var(--space-m);
-      border-radius: var(--border-radius);
-      background-color: var(--color-background-alt);
-
-      textarea {
-        width: 450px;
-
-        font-family: var(--font-logo) !important;
-      }
-
-      svg {
-        font-size: var(--font-l);
-      }
-    }
-  }
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
 }
