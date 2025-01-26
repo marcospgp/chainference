@@ -2,6 +2,8 @@
 
 Solana smart contract code.
 
+The smart contract code is in `solana/programs/chainference/src/lib.rs`
+
 There are a lot of files because `anchor init` generates them. I tried to simplify, but then `anchor build` stops working with no error message.
 
 [10 vulnerabilities to avoid when writing Solana programs](https://x.com/pencilflip/status/1483880018858201090)
@@ -28,7 +30,3 @@ There are a lot of files because `anchor init` generates them. I tried to simpli
 ## For testing
 
 Use the [Solana playground](https://beta.solpg.io/).
-
-```
-
-```
