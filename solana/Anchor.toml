@@ -5,13 +5,13 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-chainference = "FCLpnW5o1XceMGRgFma8WjHoekhKSmraZ21mfkMkzdNZ"
+chainference = "34HUaeo7ZAkAiBu6WoZhStRwkfN2Svfv8FearKsQniBU"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "Devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

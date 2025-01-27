@@ -4,7 +4,7 @@
 
 use anchor_lang::prelude::*;
 
-declare_id!("FCLpnW5o1XceMGRgFma8WjHoekhKSmraZ21mfkMkzdNZ");
+declare_id!("34HUaeo7ZAkAiBu6WoZhStRwkfN2Svfv8FearKsQniBU");
 
 #[program]
 pub mod chainference {
