@@ -10,21 +10,26 @@ declare_id!("9jqV7her1GXtVidpqYDvW24EHfbtnUMFP1kjC5ZY5Wih");
 pub mod chainference {
     use super::*;
 
-    pub fn add_server_listing(
-        ctx: Context<AddServerListingInput>,
+    pub fn add_server(
+        ctx: Context<AddServerInput>,
         _space: u64,
         models: Vec<ModelListing>,
     ) -> Result<()> {
+        // Limit max model listings per server.
         if models.len() > 256 {
             return Err(ProgramError::InvalidArgument.into());
         }
 
-        let server_account = &mut ctx.accounts.server_listing;
+        let server_account = &mut ctx.accounts.server_account;
 
         server_account.owner = ctx.accounts.owner.key();
         server_account.models = models;
         server_account.last_heartbeat = Clock::get()?.unix_timestamp;
 
+        Ok(())
+    }
+
+    pub fn close_server(_ctx: Context<CloseServerInput>) -> Result<()> {
         Ok(())
     }
 }
@@ -47,7 +52,7 @@ pub struct ModelListing {
 
 #[derive(Accounts)]
 #[instruction(space: u64)]
-pub struct AddServerListingInput<'info> {
+pub struct AddServerInput<'info> {
     #[account(
         init,
         payer = owner,
@@ -55,8 +60,19 @@ pub struct AddServerListingInput<'info> {
         seeds = [b"server", owner.key().as_ref()],
         bump
     )]
-    pub server_listing: Account<'info, ServerAccount>,
+    pub server_account: Account<'info, ServerAccount>,
     #[account(mut)]
     pub owner: Signer<'info>,
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct CloseServerInput<'info> {
+    #[account(
+        mut,
+        close = owner
+    )]
+    pub server_account: Account<'info, ServerAccount>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
 }
