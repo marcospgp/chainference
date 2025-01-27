@@ -11,7 +11,7 @@ chainference = "FCLpnW5o1XceMGRgFma8WjHoekhKSmraZ21mfkMkzdNZ"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

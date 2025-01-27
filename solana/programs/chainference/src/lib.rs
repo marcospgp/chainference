@@ -10,8 +10,8 @@ declare_id!("FCLpnW5o1XceMGRgFma8WjHoekhKSmraZ21mfkMkzdNZ");
 pub mod chainference {
     use super::*;
 
-    pub fn list_server(
-        ctx: Context<ListServerInput>,
+    pub fn add_server_listing(
+        ctx: Context<AddServerListingInput>,
         _space: u64,
         models: Vec<ModelListing>,
     ) -> Result<()> {
@@ -19,7 +19,7 @@ pub mod chainference {
             return Err(ProgramError::InvalidArgument.into());
         }
 
-        let server_account = &mut ctx.accounts.server_listing_account;
+        let server_account = &mut ctx.accounts.server_listing;
 
         server_account.owner = ctx.accounts.server.key();
         server_account.models = models;
@@ -47,7 +47,7 @@ pub struct ModelListing {
 
 #[derive(Accounts)]
 #[instruction(space: u64)]
-pub struct ListServerInput<'info> {
+pub struct AddServerListingInput<'info> {
     #[account(
         init,
         payer = server,
@@ -55,7 +55,7 @@ pub struct ListServerInput<'info> {
         seeds = [b"server", server.key().as_ref()],
         bump
     )]
-    pub server_listing_account: Account<'info, ServerAccount>,
+    pub server_listing: Account<'info, ServerAccount>,
     #[account(mut)]
     pub server: Signer<'info>,
     pub system_program: Program<'info, System>,

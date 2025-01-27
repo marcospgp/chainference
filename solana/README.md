@@ -27,6 +27,22 @@ There are a lot of files because `anchor init` generates them. I tried to simpli
 
     To fix, simply change the version of `Cargo.lock` from 4 to 3.
 
-## For testing
+## Setup
 
-Use the [Solana playground](https://beta.solpg.io/).
+1. Switch to Solana devnet with:
+
+   ```shell
+   solana config set --url https://api.devnet.solana.com
+   ```
+
+2. Switch to this project's wallet by:
+
+   - Placing (secret) `wallet.json` in project folder
+   - Running `solana config set --keypair $PWD/wallet.json`
+
+## Running
+
+- `anchor build` to build project
+- `anchor test` to run tests
+
+The [Solana playground](https://beta.solpg.io/) can also be used.

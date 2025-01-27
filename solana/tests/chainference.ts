@@ -15,7 +15,7 @@ describe("chainference", () => {
 
     // Derive PDA for the server_account
     const [serverAccountPda, _bump] =
-      await anchor.web3.PublicKey.findProgramAddress(
+      await anchor.web3.PublicKey.findProgramAddressSync(
         [Buffer.from("server"), server.toBuffer()],
         program.programId
       );
@@ -33,11 +33,11 @@ describe("chainference", () => {
 
     // Call the instruction
     await program.methods
-      .listServer(space, models)
+      .addServerListing(space, models)
       .accounts({
-        OKTHISPASSESWITHANYVALUEWTFservegfdgdrListingAccount: serverAccountPda,
-        server,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        // OKTHISPASSESWITHANYVALUEWTFservegfdgdrListingAccount: serverAccountPda,
+        // server,
+        // systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
 
