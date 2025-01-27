@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-chainference = "x46DBgUpCHX2svwTayxEmShEETZFus8mFmh2jAxDR5K"
+chainference = "9jqV7her1GXtVidpqYDvW24EHfbtnUMFP1kjC5ZY5Wih"
 
 [registry]
 url = "https://api.apr.dev"

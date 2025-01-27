@@ -27,18 +27,24 @@ There are a lot of files because `anchor init` generates them. I tried to simpli
 
     To fix, simply change the version of `Cargo.lock` from 4 to 3.
 
+- Yarn
+  - Recommended setup: install [nvm](https://github.com/nvm-sh/nvm), run `nvm install --lts && nvm use --lts`, then make Yarn available in the shell with `corepack enable`.
+
 ## Setup
 
+1. `yarn install`
 1. Switch to Solana devnet with:
 
    ```shell
    solana config set --url https://api.devnet.solana.com
    ```
 
-2. Switch to this project's wallet by:
+1. Switch to this project's wallet by:
 
    - Placing (secret) `wallet.json` in project folder
    - Running `solana config set --keypair $PWD/wallet.json`
+
+Rust dependencies should be installed automatically by Rust analyzer in VSCode, or when running `anchor build`.
 
 ## Running
 
@@ -59,3 +65,7 @@ After closing you will need to rotate the program key by deleting the `target` f
 ```text
 Error: WARNING! Closed programs cannot be recreated at the same program id. Once a program is closed, it can never be invoked again. To proceed with closing, rerun the `close` command with the `--bypass-warning` flag
 ```
+
+## Gotchas
+
+- We no longer need to call `accounts()` if all accounts can be auto resolved on the client. See: <https://github.com/coral-xyz/anchor/issues/3515>. But because I'm not even sure what this means, I think I'll just use `accountsStrict()` for the old behavior that is currently documented.

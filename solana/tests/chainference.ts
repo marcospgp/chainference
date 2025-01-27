@@ -23,21 +23,20 @@ describe("chainference", () => {
     // We'll pick an arbitrary space. In a real app, compute carefully or cap it.
     const space = new anchor.BN(1024);
 
-    // Price 0.0004 SOL → 0.0004 * 1_000_000_000 lamports = 400_000
     const models = [
       {
         id: "mlx-community/Llama-3.2-3B-Instruct-4bit",
-        price: new anchor.BN(400_000),
+        price: new anchor.BN(0.0004), // SOL per 1M output tokens
       },
     ];
 
     // Call the instruction
     await program.methods
       .addServerListing(space, models)
-      .accounts({
-        // OKTHISPASSESWITHANYVALUEWTFservegfdgdrListingAccount: serverAccountPda,
-        // server,
-        // systemProgram: anchor.web3.SystemProgram.programId,
+      .accountsStrict({
+        serverListing: serverAccountPda,
+        server,
+        systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
 
