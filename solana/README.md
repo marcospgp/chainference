@@ -44,5 +44,6 @@ There are a lot of files because `anchor init` generates them. I tried to simpli
 
 - `anchor build` to build project
 - `anchor test` to run tests
+  - I think that running tests on localnet doesn't actually validate transaction accounts. [Submitted issue here](https://github.com/coral-xyz/anchor/issues/3515).
 
 The [Solana playground](https://beta.solpg.io/) can also be used.
