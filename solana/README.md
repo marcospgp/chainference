@@ -47,3 +47,15 @@ There are a lot of files because `anchor init` generates them. I tried to simpli
   - I think that running tests on localnet doesn't actually validate transaction accounts. [Submitted issue here](https://github.com/coral-xyz/anchor/issues/3515).
 
 The [Solana playground](https://beta.solpg.io/) can also be used.
+
+## Deploying and undeploying
+
+Deploy with `anchor deploy`. Make sure you're on either localnet or devnet and have configured anchor to use the correct wallet (unless this is the real deploy).
+
+The program can be closed with `solana program close <program ID>`, which reclaims previously paid SOL for 2-year rent.
+
+After closing you will need to rotate the program key by deleting the `target` folder and running `anchor keys sync`:
+
+```text
+Error: WARNING! Closed programs cannot be recreated at the same program id. Once a program is closed, it can never be invoked again. To proceed with closing, rerun the `close` command with the `--bypass-warning` flag
+```
