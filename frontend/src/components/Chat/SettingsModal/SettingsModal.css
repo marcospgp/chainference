@@ -2,5 +2,59 @@
   box-shadow: none;
 }
 
-.settings-modal {
+.mantine-Modal-title {
+  font-size: var(--font-l);
+  font-family: var(--font-base);
+}
+.mantine-Popover-dropdown {
+  border-color: transparent;
+}
+
+.settings-modal-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: var(--space-m);
+}
+
+.settings-modal-advanced {
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.settings-modal-advanced-collapse-wrapper {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: var(--space-m);
+}
+
+.select-root {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-m);
+  width: 100%; /* Full width */
+}
+
+.select-label {
+  flex: 1; /* Take up all available space */
+}
+
+.select-input {
+  flex: 1; /* Take up all available space */
+}
+
+.select-wrapper {
+  flex: 1; /* Take up all available space */
 }
