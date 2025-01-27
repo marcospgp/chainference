@@ -6,6 +6,13 @@
   padding: var(--space-l);
   font-family: var(--font-logo);
 
+  .navbar-left {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-m);
+  }
+
   a {
     color: var(--color-primary);
     text-decoration: none;
