@@ -11,7 +11,7 @@ chainference = "9jqV7her1GXtVidpqYDvW24EHfbtnUMFP1kjC5ZY5Wih"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Devnet"
+cluster = "localnet"
 wallet = "wallet.json"
 
 [scripts]

@@ -49,8 +49,8 @@ Rust dependencies should be installed automatically by Rust analyzer in VSCode, 
 ## Running
 
 - `anchor build` to build project
-- `anchor test` to run tests
-  - I think that running tests on localnet doesn't actually validate transaction accounts. [Submitted issue here](https://github.com/coral-xyz/anchor/issues/3515).
+- `anchor test` to run tests (this will also build the project)
+  - `anchor test --provider.cluster devnet` to test on devnet. This will also deploy the program.
 
 The [Solana playground](https://beta.solpg.io/) can also be used.
 

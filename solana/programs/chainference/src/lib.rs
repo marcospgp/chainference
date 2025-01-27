@@ -21,7 +21,7 @@ pub mod chainference {
 
         let server_account = &mut ctx.accounts.server_listing;
 
-        server_account.owner = ctx.accounts.server.key();
+        server_account.owner = ctx.accounts.owner.key();
         server_account.models = models;
         server_account.last_heartbeat = Clock::get()?.unix_timestamp;
 
@@ -50,13 +50,13 @@ pub struct ModelListing {
 pub struct AddServerListingInput<'info> {
     #[account(
         init,
-        payer = server,
+        payer = owner,
         space = space as usize,
-        seeds = [b"server", server.key().as_ref()],
+        seeds = [b"server", owner.key().as_ref()],
         bump
     )]
     pub server_listing: Account<'info, ServerAccount>,
     #[account(mut)]
-    pub server: Signer<'info>,
+    pub owner: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
