@@ -38,7 +38,7 @@ An inference request includes:
   - Minimum total completed inferences
 - Desired model
 - SOL stake of maximum cost
-- Peer to peer address for server to stream response to
+- Creation timestamp
 
 ### 3. A server locks the inference request on-chain
 

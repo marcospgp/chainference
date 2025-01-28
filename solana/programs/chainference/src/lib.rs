@@ -32,6 +32,48 @@ pub mod chainference {
     pub fn close_server(_ctx: Context<CloseServerInput>) -> Result<()> {
         Ok(())
     }
+
+    pub fn request_inference(
+        ctx: Context<RequestInput>,
+        _space: u64,
+        created_at: i64,
+        model: String,
+        max_cost: u64,
+    ) -> Result<()> {
+        let current_time = Clock::get()?.unix_timestamp;
+
+        // Ensure timestamp is reasonable.
+        if created_at < current_time - 60 || created_at > current_time + 60 {
+            return Err(ProgramError::InvalidArgument.into());
+        }
+
+        // Ensure max_cost is non-zero.
+        if max_cost == 0 {
+            return Err(ProgramError::InvalidArgument.into());
+        }
+
+        // Transfer SOL from the requester to the stake account.
+        **ctx
+            .accounts
+            .stake
+            .to_account_info()
+            .try_borrow_mut_lamports()? += max_cost;
+        **ctx
+            .accounts
+            .requester
+            .to_account_info()
+            .try_borrow_mut_lamports()? -= max_cost;
+
+        // Initialize the inference request account.
+        let request = &mut ctx.accounts.request;
+        request.requester = ctx.accounts.requester.key();
+        request.model = model;
+        request.max_cost = max_cost;
+        request.stake = ctx.accounts.stake.key();
+        request.created_at = created_at;
+
+        Ok(())
+    }
 }
 
 #[account]
@@ -49,6 +91,19 @@ pub struct ModelListing {
     pub id: String,
     pub price: u64,
 }
+
+#[account]
+pub struct Request {
+    pub requester: Pubkey,
+    pub model: String,
+    // Max cost in lamports for entire inference.
+    pub max_cost: u64,
+    pub stake: Pubkey,
+    pub created_at: i64,
+}
+
+#[account]
+pub struct Stake {}
 
 #[derive(Accounts)]
 #[instruction(space: u64)]
@@ -75,4 +130,31 @@ pub struct CloseServerInput<'info> {
     pub server_account: Account<'info, ServerAccount>,
     #[account(mut)]
     pub owner: Signer<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(space: u64, created_at: i64, model: String, max_cost: u64)]
+pub struct RequestInput<'info> {
+    #[account(
+        init,
+        payer = requester,
+        space = space as usize,
+        seeds = [b"inference", requester.key().as_ref(), model.as_bytes(), &created_at.to_le_bytes()],
+        bump
+    )]
+    pub request: Account<'info, Request>,
+
+    #[account(mut)]
+    pub requester: Signer<'info>,
+
+    #[account(
+        init,
+        payer = requester,
+        space = 0,
+        seeds = [b"stake", requester.key().as_ref(), &created_at.to_le_bytes()],
+        bump
+    )]
+    pub stake: Account<'info, Stake>,
+
+    pub system_program: Program<'info, System>,
 }
