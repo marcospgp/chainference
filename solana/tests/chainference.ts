@@ -11,7 +11,7 @@ async function getServerAccountSize(
   type ServerAccount = anchor.IdlAccounts<Chainference>["serverAccount"];
 
   // Fake account just to calculate size.
-  const serverAccount: ServerAccount = {
+  const fakeServerAccount: ServerAccount = {
     owner: anchor.web3.PublicKey.default,
     models,
     lastHeartbeat: new anchor.BN(0),
@@ -19,7 +19,23 @@ async function getServerAccountSize(
 
   // Encode the account to calculate space.
   // Note the 8 bytes for the discriminator are automatically accounted for.
-  return (await program.coder.accounts.encode("serverAccount", serverAccount))
+  return (
+    await program.coder.accounts.encode("serverAccount", fakeServerAccount)
+  ).length;
+}
+
+async function getRequestAccountSize(model: string) {
+  type Request = anchor.IdlAccounts<Chainference>["request"];
+
+  const fakeRequestAccount: Request = {
+    requester: anchor.web3.PublicKey.default,
+    model,
+    maxCost: new anchor.BN(0),
+    stake: anchor.web3.PublicKey.default,
+    createdAt: new anchor.BN(0),
+  };
+
+  return (await program.coder.accounts.encode("request", fakeRequestAccount))
     .length;
 }
 
@@ -114,5 +130,64 @@ describe("Chainference", function () {
         .to.have.property("message")
         .and.include("AccountDidNotSerialize.");
     }
+  });
+
+  it("creates inference request", async () => {
+    const createdAt = Math.floor(Date.now() / 1000);
+    const model = "mlx-community/Llama-3.2-3B-Instruct-4bit";
+
+    const [requestPda, _bump] =
+      await anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("inference"),
+          publicKey.toBuffer(),
+          Buffer.from(new anchor.BN(createdAt).toArray("le", 8)),
+        ],
+        program.programId
+      );
+
+    const [stakePda, _bump2] =
+      await anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("stake"),
+          publicKey.toBuffer(),
+          Buffer.from(new anchor.BN(createdAt).toArray("le", 8)),
+        ],
+        program.programId
+      );
+
+    const requestSpace = await getRequestAccountSize(model);
+    const maxCost = 1_000_000; // 0.01 SOL in lamports
+
+    await program.methods
+      .requestInference(
+        new anchor.BN(requestSpace),
+        new anchor.BN(createdAt),
+        model,
+        new anchor.BN(maxCost)
+      )
+      .accountsStrict({
+        request: requestPda,
+        stake: stakePda,
+        requester: publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    // Fetch the request account.
+    const requestAccount = await program.account.request.fetch(requestPda);
+
+    expect(requestAccount.requester.toString()).to.equal(publicKey.toString());
+    expect(requestAccount.model).to.equal(model);
+    expect(requestAccount.maxCost.toString()).to.equal(maxCost.toString());
+    expect(requestAccount.stake.toString()).to.equal(stakePda.toString());
+    expect(requestAccount.createdAt.toNumber()).to.equal(createdAt);
+
+    // Verify the stake account exists
+    const stakeAccount = await provider.connection.getAccountInfo(stakePda);
+    expect(stakeAccount).to.not.be.null;
+    expect(stakeAccount!.lamports).to.equal(
+      maxCost + (await provider.connection.getMinimumBalanceForRentExemption(8))
+    );
   });
 });

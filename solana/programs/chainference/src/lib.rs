@@ -52,17 +52,19 @@ pub mod chainference {
             return Err(ProgramError::InvalidArgument.into());
         }
 
-        // Transfer SOL from the requester to the stake account.
-        **ctx
-            .accounts
-            .stake
-            .to_account_info()
-            .try_borrow_mut_lamports()? += max_cost;
-        **ctx
-            .accounts
-            .requester
-            .to_account_info()
-            .try_borrow_mut_lamports()? -= max_cost;
+        // Transfer lamports from the requester to the stake account
+        let ix = anchor_lang::solana_program::system_instruction::transfer(
+            ctx.accounts.requester.key,
+            ctx.accounts.stake.to_account_info().key,
+            max_cost,
+        );
+        anchor_lang::solana_program::program::invoke(
+            &ix,
+            &[
+                ctx.accounts.requester.to_account_info(),
+                ctx.accounts.stake.to_account_info(),
+            ],
+        )?;
 
         // Initialize the inference request account.
         let request = &mut ctx.accounts.request;
@@ -133,13 +135,13 @@ pub struct CloseServerInput<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(space: u64, created_at: i64, model: String, max_cost: u64)]
+#[instruction(space: u64, created_at: i64)]
 pub struct RequestInput<'info> {
     #[account(
         init,
         payer = requester,
         space = space as usize,
-        seeds = [b"inference", requester.key().as_ref(), model.as_bytes(), &created_at.to_le_bytes()],
+        seeds = [b"inference", requester.key().as_ref(), &created_at.to_le_bytes()],
         bump
     )]
     pub request: Account<'info, Request>,
@@ -150,7 +152,7 @@ pub struct RequestInput<'info> {
     #[account(
         init,
         payer = requester,
-        space = 0,
+        space = 8, // Just for the discriminator.
         seeds = [b"stake", requester.key().as_ref(), &created_at.to_le_bytes()],
         bump
     )]
