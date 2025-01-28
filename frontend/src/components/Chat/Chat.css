@@ -80,18 +80,14 @@
 }
 
 .messages-container {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
   width: var(--text-area-width);
   margin-bottom: var(--space-l);
   gap: var(--space-m);
-  padding: var(--space-m);
 }
 
 .message {
   width: fit-content;
-  max-width: calc(var(--text-area-width) / 3);
+  max-width: calc(var(--text-area-width) / 1.5);
   background-color: var(--color-primary);
   padding: var(--space-m);
   border-radius: var(--border-radius);

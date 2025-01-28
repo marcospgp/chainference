@@ -1,5 +1,12 @@
-import { useState } from "react";
-import { Textarea } from "@mantine/core";
+import React, { useState, useRef, useEffect } from "react";
+import {
+  Badge,
+  Flex,
+  NumberFormatter,
+  ScrollArea,
+  Text,
+  Textarea,
+} from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 
 import { IoSendSharp, IoSettingsSharp } from "react-icons/io5";
@@ -18,6 +25,15 @@ export default function Chat() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [opened, { open, close }] = useDisclosure();
   const [input, setInput] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatMessages]);
 
   const simulateTypingResponse = (fullResponse: string) => {
     const responseId = Date.now().toString();
@@ -75,6 +91,11 @@ export default function Chat() {
     }, 1000);
   };
 
+  const numOfServers = 2; // Replace with actual number of servers
+  const priceInUSD = 2; // Replace with actual price
+  const priceInSOL = 0.001; // Replace with actual price
+  const random = React.useRef(Math.random() * 200).current;
+
   return (
     <>
       <SettingsModal opened={opened} onClose={close} />
@@ -104,24 +125,37 @@ export default function Chat() {
               </div>
               <div className="prompt-info">
                 <IoSettingsSharp className="settings-icon" onClick={open} />
-                <span>🟢 2 servers matched • max $0.10 / SOL 0.0004</span>
+                <Badge size="lg">
+                  {`${
+                    numOfServers > 0 ? `🟢 ` : `🔴 `
+                  }${numOfServers} / ${Math.floor(random)} servers matched`}
+                </Badge>
+                <Flex
+                  flex={1}
+                  justify="start"
+                  align="center"
+                  style={{ alignSelf: "flex-end" }}
+                >
+                  <Text size="xs">{`Max price: $${priceInUSD} / SOL ${priceInSOL}`}</Text>
+                </Flex>
               </div>
             </div>
           </div>
         ) : (
           <>
-            <div className="messages-container">
+            <ScrollArea h="60vh" mah="60vh" className="messages-container">
               {chatMessages.map((message) => (
-                <div
+                <Flex
+                  flex={1}
                   key={message.id}
-                  className={`message ${message.isResponse ? "response" : ""} ${
-                    message.isTyping ? "typing" : ""
-                  }`}
+                  mb={"xl"}
+                  justify={message.isResponse ? "start" : "end"}
                 >
-                  {message.text}
-                </div>
+                  <div className="message">{message.text}</div>
+                </Flex>
               ))}
-            </div>
+              <div ref={messagesEndRef} />
+            </ScrollArea>
             <div className="prompt-box">
               <div className="prompt-input">
                 <Textarea
@@ -140,7 +174,19 @@ export default function Chat() {
               </div>
               <div className="prompt-info">
                 <IoSettingsSharp className="settings-icon" onClick={open} />
-                <span>🟢 2 servers matched • max $0.10 / SOL 0.0004</span>
+                <Badge size="lg">
+                  {`${
+                    numOfServers > 0 ? `🟢 ` : `🔴 `
+                  }${numOfServers} / ${Math.floor(random)} servers matched`}
+                </Badge>
+                <Flex
+                  flex={1}
+                  justify="start"
+                  align="center"
+                  style={{ alignSelf: "flex-end" }}
+                >
+                  <Text size="xs">{`Max price: $${priceInUSD} / SOL ${priceInSOL}`}</Text>
+                </Flex>
               </div>
             </div>
           </>
