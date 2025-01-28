@@ -96,7 +96,9 @@ Chainference will have a centralized website with:
 - Fees are cheap, with $0.01 being enough for around 8k transactions at the base fee with a SOL value of $250. Prioritization fees are almost negligible at an average of ~1 lamport (1e-9 SOL).
 - Storage is expensive, with a cost of ~7 SOL per MB ($1750 at $250 SOL price). This value is however fully recoverable on deletion.
 
-## Anonymity
+## Thoughts on privacy
+
+### Anonymity
 
 Prompts and responses are only visible to each client and server engaging in a transaction.
 
@@ -107,3 +109,7 @@ To avoid tracing back to the real wallet, a centralized place could be creating 
 However, servers can still associate prompts to the address they are sending the response to.
 
 So the possibility of users creating temporary addresses to receive responses at should be investigated - some sort of proxying.
+
+### Encryption
+
+Future improvements in encrypted inference may allow us to have servers running inference on prompts without being able to see its plain text contents, and perhaps also for the response.
