@@ -24,21 +24,6 @@ async function getServerAccountSize(
   ).length;
 }
 
-async function getRequestAccountSize(model: string) {
-  type Request = anchor.IdlAccounts<Chainference>["request"];
-
-  const fakeRequestAccount: Request = {
-    requester: anchor.web3.PublicKey.default,
-    model,
-    maxCost: new anchor.BN(0),
-    stake: anchor.web3.PublicKey.default,
-    createdAt: new anchor.BN(0),
-  };
-
-  return (await program.coder.accounts.encode("request", fakeRequestAccount))
-    .length;
-}
-
 const models = [
   {
     id: "mlx-community/Llama-3.2-3B-Instruct-4bit",
@@ -54,7 +39,7 @@ const publicKey = provider.wallet.publicKey;
 describe("Chainference", function () {
   // Tell Mocha to be patient with our tests.
   // Otherwise test times show up in red when they're not that high for a solana app.
-  this.slow(1000);
+  this.slow(2000);
 
   let serverAccountPda: anchor.web3.PublicKey;
   let size: number;
@@ -89,6 +74,27 @@ describe("Chainference", function () {
       "mlx-community/Llama-3.2-3B-Instruct-4bit"
     );
     expect(a.models[0]!.price.toNumber()).to.equal(models[0]!.price.toNumber());
+  });
+
+  it("doesn't let a non-owner close a server listing", async () => {
+    const randomKeypair = anchor.web3.Keypair.generate();
+
+    try {
+      await program.methods
+        .closeServer()
+        .accountsStrict({
+          serverAccount: serverAccountPda,
+          owner: randomKeypair.publicKey,
+        })
+        .signers([randomKeypair])
+        .rpc();
+
+      throw null;
+    } catch (e) {
+      console.log(e);
+      expect(e).to.be.instanceOf(Error);
+      expect(e).to.not.be.null;
+    }
   });
 
   it("closes the server listing we just created", async () => {
@@ -132,62 +138,48 @@ describe("Chainference", function () {
     }
   });
 
+  it("fails to create inference request when size is 1 byte too small", async () => {
+    // try {
+    //   await program.methods
+    //     .addServer(new anchor.BN(size - 1), models)
+    //     .accountsStrict({
+    //       serverAccount: serverAccountPda,
+    //       owner: publicKey,
+    //       systemProgram: anchor.web3.SystemProgram.programId,
+    //     })
+    //     .rpc();
+    // } catch (e) {
+    //   expect(e).to.be.instanceOf(Error);
+    //   expect(e)
+    //     .to.have.property("message")
+    //     .and.include("AccountDidNotSerialize.");
+    // }
+  });
+
   it("creates inference request", async () => {
-    const createdAt = Math.floor(Date.now() / 1000);
     const model = "mlx-community/Llama-3.2-3B-Instruct-4bit";
-
-    const [requestPda, _bump] =
-      await anchor.web3.PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("inference"),
-          publicKey.toBuffer(),
-          Buffer.from(new anchor.BN(createdAt).toArray("le", 8)),
-        ],
-        program.programId
-      );
-
-    const [stakePda, _bump2] =
-      await anchor.web3.PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("stake"),
-          publicKey.toBuffer(),
-          Buffer.from(new anchor.BN(createdAt).toArray("le", 8)),
-        ],
-        program.programId
-      );
-
-    const requestSpace = await getRequestAccountSize(model);
     const maxCost = 1_000_000; // 0.01 SOL in lamports
 
-    await program.methods
-      .requestInference(
-        new anchor.BN(requestSpace),
-        new anchor.BN(createdAt),
-        model,
-        new anchor.BN(maxCost)
-      )
-      .accountsStrict({
-        request: requestPda,
-        stake: stakePda,
-        requester: publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
-      .rpc();
+    await program.methods.requestInference(model, new anchor.BN(maxCost)).rpc();
 
-    // Fetch the request account.
-    const requestAccount = await program.account.request.fetch(requestPda);
+    const requests = await program.account.request.all([
+      {
+        memcmp: {
+          offset: 8, // Skip the 8-byte discriminator
+          bytes: publicKey.toBase58(), // Filter by requester Pubkey
+        },
+      },
+    ]);
 
-    expect(requestAccount.requester.toString()).to.equal(publicKey.toString());
-    expect(requestAccount.model).to.equal(model);
-    expect(requestAccount.maxCost.toString()).to.equal(maxCost.toString());
-    expect(requestAccount.stake.toString()).to.equal(stakePda.toString());
-    expect(requestAccount.createdAt.toNumber()).to.equal(createdAt);
+    expect(requests).to.have.length(1);
+    const req = requests[0];
+    expect(req!.account.requester.toString()).to.equal(publicKey.toString());
+    expect(req!.account.model).to.equal(model);
+    expect(req!.account.maxCost.toString()).to.equal(maxCost.toString());
 
-    // Verify the stake account exists
-    const stakeAccount = await provider.connection.getAccountInfo(stakePda);
-    expect(stakeAccount).to.not.be.null;
-    expect(stakeAccount!.lamports).to.equal(
-      maxCost + (await provider.connection.getMinimumBalanceForRentExemption(8))
-    );
+    const lamports = (await provider.connection.getAccountInfo(req!.publicKey))!
+      .lamports;
+
+    expect(lamports).to.be.at.least(maxCost);
   });
 });

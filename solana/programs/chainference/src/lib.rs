@@ -35,34 +35,19 @@ pub mod chainference {
 
     pub fn request_inference(
         ctx: Context<RequestInput>,
-        _space: u64,
-        created_at: i64,
         model: String,
         max_cost: u64,
     ) -> Result<()> {
-        let current_time = Clock::get()?.unix_timestamp;
-
-        // Ensure timestamp is reasonable.
-        if created_at < current_time - 60 || created_at > current_time + 60 {
-            return Err(ProgramError::InvalidArgument.into());
-        }
-
-        // Ensure max_cost is non-zero.
-        if max_cost == 0 {
-            return Err(ProgramError::InvalidArgument.into());
-        }
-
-        // Transfer lamports from the requester to the stake account
         let ix = anchor_lang::solana_program::system_instruction::transfer(
             ctx.accounts.requester.key,
-            ctx.accounts.stake.to_account_info().key,
+            ctx.accounts.request.to_account_info().key,
             max_cost,
         );
         anchor_lang::solana_program::program::invoke(
             &ix,
             &[
                 ctx.accounts.requester.to_account_info(),
-                ctx.accounts.stake.to_account_info(),
+                ctx.accounts.request.to_account_info(),
             ],
         )?;
 
@@ -71,8 +56,6 @@ pub mod chainference {
         request.requester = ctx.accounts.requester.key();
         request.model = model;
         request.max_cost = max_cost;
-        request.stake = ctx.accounts.stake.key();
-        request.created_at = created_at;
 
         Ok(())
     }
@@ -99,13 +82,9 @@ pub struct Request {
     pub requester: Pubkey,
     pub model: String,
     // Max cost in lamports for entire inference.
+    // This account will hold this value in the balance.
     pub max_cost: u64,
-    pub stake: Pubkey,
-    pub created_at: i64,
 }
-
-#[account]
-pub struct Stake {}
 
 #[derive(Accounts)]
 #[instruction(space: u64)]
@@ -127,7 +106,8 @@ pub struct AddServerInput<'info> {
 pub struct CloseServerInput<'info> {
     #[account(
         mut,
-        close = owner
+        close = owner,
+        has_one = owner
     )]
     pub server_account: Account<'info, ServerAccount>,
     #[account(mut)]
@@ -135,28 +115,17 @@ pub struct CloseServerInput<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(space: u64, created_at: i64)]
+#[instruction(model: String)]
 pub struct RequestInput<'info> {
+    pub system_program: Program<'info, System>,
     #[account(
         init,
         payer = requester,
-        space = space as usize,
-        seeds = [b"inference", requester.key().as_ref(), &created_at.to_le_bytes()],
+        space = 8 + 32 + (4 + model.len()) + 8,
+        seeds = [b"request", requester.key().as_ref()],
         bump
     )]
     pub request: Account<'info, Request>,
-
     #[account(mut)]
     pub requester: Signer<'info>,
-
-    #[account(
-        init,
-        payer = requester,
-        space = 8, // Just for the discriminator.
-        seeds = [b"stake", requester.key().as_ref(), &created_at.to_le_bytes()],
-        bump
-    )]
-    pub stake: Account<'info, Stake>,
-
-    pub system_program: Program<'info, System>,
 }
