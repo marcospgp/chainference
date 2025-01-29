@@ -10,11 +10,7 @@ declare_id!("9jqV7her1GXtVidpqYDvW24EHfbtnUMFP1kjC5ZY5Wih");
 pub mod chainference {
     use super::*;
 
-    pub fn add_server(
-        ctx: Context<AddServerInput>,
-        _space: u64,
-        models: Vec<ModelListing>,
-    ) -> Result<()> {
+    pub fn add_server(ctx: Context<AddServerInput>, models: Vec<ModelListing>) -> Result<()> {
         // Limit max model listings per server.
         if models.len() > 256 {
             return Err(ProgramError::InvalidArgument.into());
@@ -62,24 +58,29 @@ pub mod chainference {
 }
 
 #[account]
+#[derive(InitSpace)]
 pub struct ServerAccount {
     pub owner: Pubkey,
     // Hugging face model IDs and corresponding price per 1M output tokens.
     // Max len preallocates space for entries.
+    #[max_len(0)] // We set size later based on client input.
     pub models: Vec<ModelListing>,
     // Timestamp of last heartbeat.
     pub last_heartbeat: i64,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, InitSpace)]
 pub struct ModelListing {
+    #[max_len(0)] // We set size later based on client input.
     pub id: String,
     pub price: u64,
 }
 
 #[account]
+#[derive(InitSpace)]
 pub struct Request {
     pub requester: Pubkey,
+    #[max_len(0)] // We set size later based on client input.
     pub model: String,
     // Max cost in lamports for entire inference.
     // This account will hold this value in the balance.
@@ -87,12 +88,12 @@ pub struct Request {
 }
 
 #[derive(Accounts)]
-#[instruction(space: u64)]
+#[instruction(models: Vec<ModelListing>)]
 pub struct AddServerInput<'info> {
     #[account(
         init,
         payer = owner,
-        space = space as usize,
+        space = 8 + ServerAccount::INIT_SPACE + models.iter().map(|m| ModelListing::INIT_SPACE + m.id.len()).sum::<usize>(),
         seeds = [b"server", owner.key().as_ref()],
         bump
     )]
@@ -121,7 +122,7 @@ pub struct RequestInput<'info> {
     #[account(
         init,
         payer = requester,
-        space = 8 + 32 + (4 + model.len()) + 8,
+        space = 8 + Request::INIT_SPACE + model.len(),
         seeds = [b"request", requester.key().as_ref()],
         bump
     )]
