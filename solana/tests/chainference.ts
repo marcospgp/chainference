@@ -54,9 +54,8 @@ describe("Chainference", function () {
     try {
       await program.methods
         .closeServer()
-        .accountsStrict({
+        .accounts({
           serverAccount: server!.publicKey,
-          owner: randomKeypair.publicKey,
         })
         .signers([randomKeypair])
         .rpc();
@@ -76,9 +75,8 @@ describe("Chainference", function () {
 
     await program.methods
       .closeServer()
-      .accountsStrict({
+      .accounts({
         serverAccount: server!.publicKey,
-        owner: publicKey,
       })
       .rpc();
 

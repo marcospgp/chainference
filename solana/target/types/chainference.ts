@@ -73,6 +73,43 @@ export type Chainference = {
       ]
     },
     {
+      "name": "claimPayment",
+      "discriminator": [
+        69,
+        112,
+        250,
+        167,
+        37,
+        156,
+        200,
+        30
+      ],
+      "accounts": [
+        {
+          "name": "request",
+          "writable": true
+        },
+        {
+          "name": "serverOwner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "requester",
+          "writable": true,
+          "relations": [
+            "request"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "closeServer",
       "discriminator": [
         98,
