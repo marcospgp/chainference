@@ -5,6 +5,11 @@ import { expect } from "chai";
 
 const program = anchor.workspace.Chainference as Program<Chainference>;
 
+const provider = anchor.AnchorProvider.env();
+anchor.setProvider(provider);
+
+const publicKey = provider.wallet.publicKey;
+
 const models = [
   {
     id: "mlx-community/Llama-3.2-3B-Instruct-4bit",
@@ -15,11 +20,6 @@ const models = [
     price: new anchor.BN(800000), // Lamports per 1M output tokens
   },
 ];
-
-const provider = anchor.AnchorProvider.env();
-anchor.setProvider(provider);
-
-const publicKey = provider.wallet.publicKey;
 
 describe("Chainference", function () {
   // Tell Mocha to be patient with our tests.
