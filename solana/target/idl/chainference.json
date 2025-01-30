@@ -122,6 +122,7 @@
         },
         {
           "name": "owner",
+          "writable": true,
           "signer": true,
           "relations": [
             "server_account"

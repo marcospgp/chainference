@@ -82,12 +82,10 @@ pub mod chainference {
         let server_owner = &mut ctx.accounts.server_owner;
         let requester = &mut ctx.accounts.requester;
 
-        // Ensure only the server that locked the request can claim payment
         if request.locked_by != Some(server_owner.key()) {
             return Err(ProgramError::InvalidArgument.into());
         }
 
-        // Ensure the claim amount is valid
         if amount > request.max_cost {
             return Err(ProgramError::InvalidArgument.into());
         }
@@ -95,27 +93,15 @@ pub mod chainference {
         let total_balance = **request.to_account_info().lamports.borrow();
         let remaining_balance = total_balance.saturating_sub(amount);
 
-        // Transfer `amount` to the server owner
         **request.to_account_info().try_borrow_mut_lamports()? -= amount;
         **server_owner.to_account_info().try_borrow_mut_lamports()? += amount;
 
-        // Transfer remaining balance to the requester
         if remaining_balance > 0 {
             **request.to_account_info().try_borrow_mut_lamports()? -= remaining_balance;
             **requester.to_account_info().try_borrow_mut_lamports()? += remaining_balance;
         }
 
-        // Reset request state
-        request.locked_by = None;
         request.max_cost = 0;
-
-        msg!(
-            "Server {} claimed {} lamports, returning {} to requester {}",
-            server_owner.key(),
-            amount,
-            remaining_balance,
-            requester.key()
-        );
 
         Ok(())
     }
@@ -178,7 +164,7 @@ pub struct CloseServerCtx<'info> {
         has_one = owner
     )]
     pub server_account: Account<'info, ServerAccount>,
-    #[account()]
+    #[account(mut)]
     pub owner: Signer<'info>,
 }
 

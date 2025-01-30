@@ -9,6 +9,7 @@ const provider = anchor.AnchorProvider.env();
 anchor.setProvider(provider);
 
 const publicKey = provider.wallet.publicKey;
+const serverOwnerKeypair = anchor.web3.Keypair.generate();
 
 const models = [
   {
@@ -26,15 +27,38 @@ describe("Chainference", function () {
   // Otherwise test times show up in red when they're not that high for a solana app.
   this.slow(2000);
 
+  before(async () => {
+    // Fund server owner wallet.
+    const latestBlockhash = await provider.connection.getLatestBlockhash();
+    const sig = await provider.connection.requestAirdrop(
+      serverOwnerKeypair.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL
+    );
+
+    await provider.connection.confirmTransaction({
+      signature: sig,
+      blockhash: latestBlockhash.blockhash,
+      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+    });
+  });
+
   it("adds a server listing", async () => {
-    await program.methods.addServer(models).rpc();
+    await program.methods
+      .addServer(models)
+      .accounts({
+        owner: serverOwnerKeypair.publicKey,
+      })
+      .signers([serverOwnerKeypair])
+      .rpc();
 
     const servers = await program.account.serverAccount.all();
 
     expect(servers).to.have.length(1);
     const server = servers[0];
 
-    expect(server!.account.owner.toString()).to.equal(publicKey.toString());
+    expect(server!.account.owner.toString()).to.equal(
+      serverOwnerKeypair.publicKey.toString()
+    );
     expect(server!.account.models.length).to.equal(2);
     expect(server!.account.models[0]!.id).to.equal(
       "mlx-community/Llama-3.2-3B-Instruct-4bit"
@@ -62,9 +86,8 @@ describe("Chainference", function () {
 
       throw null;
     } catch (e) {
-      console.log(e);
       expect(e).to.be.instanceOf(Error);
-      expect(e).to.not.be.null;
+      expect(e).to.have.property("message").that.includes("unknown signer");
     }
   });
 
@@ -75,13 +98,16 @@ describe("Chainference", function () {
 
     await program.methods
       .closeServer()
-      .accounts({
+      .accountsStrict({
         serverAccount: server!.publicKey,
+        owner: serverOwnerKeypair.publicKey,
       })
+      .signers([serverOwnerKeypair])
       .rpc();
 
     try {
       await program.account.serverAccount.fetch(server!.publicKey);
+      throw null;
     } catch (e) {
       expect(e).to.be.instanceOf(Error);
       expect(e)
@@ -121,7 +147,13 @@ describe("Chainference", function () {
 
   it("locks inference request", async () => {
     // Create server first
-    await program.methods.addServer(models).rpc();
+    await program.methods
+      .addServer(models)
+      .accounts({
+        owner: serverOwnerKeypair.publicKey,
+      })
+      .signers([serverOwnerKeypair])
+      .rpc();
     const servers = await program.account.serverAccount.all();
     expect(servers).to.have.length(1);
     const server = servers[0];
@@ -135,17 +167,21 @@ describe("Chainference", function () {
 
     await program.methods
       .lockRequest(sendPromptTo)
-      .accounts({
+      .accountsStrict({
         request: requestPda,
         server: server!.publicKey,
+        owner: serverOwnerKeypair.publicKey,
       })
+      .signers([serverOwnerKeypair])
       .rpc();
 
     const requestAccount = await program.account.inferenceRequestAccount.fetch(
       requestPda
     );
 
-    expect(requestAccount!.lockedBy!.toBase58()).to.equal(publicKey.toBase58());
+    expect(requestAccount!.lockedBy!.toBase58()).to.equal(
+      serverOwnerKeypair.publicKey.toBase58()
+    );
     expect(requestAccount.sendPromptTo).to.equal(sendPromptTo);
   });
 
@@ -155,5 +191,61 @@ describe("Chainference", function () {
 
   it("doesn't let a server without the requested model lock a request", async () => {
     // TODO
+  });
+
+  it("claims payment for a locked request", async () => {
+    const claimAmount = new anchor.BN(600_000);
+
+    // Fetch existing locked request
+    const requests = await program.account.inferenceRequestAccount.all();
+    expect(requests).to.have.length(1);
+    const requestPda = requests[0]!.publicKey;
+    // Fetch initial balances
+    const requestBefore = await provider.connection.getAccountInfo(requestPda);
+    const requesterBefore = await provider.connection.getAccountInfo(publicKey);
+    const ownerBefore = await provider.connection.getAccountInfo(
+      serverOwnerKeypair.publicKey
+    );
+
+    expect(requestBefore!.lamports).to.be.at.least(claimAmount.toNumber());
+
+    await program.methods
+      .claimPayment(claimAmount)
+      .accounts({
+        request: requestPda,
+        serverOwner: serverOwnerKeypair.publicKey,
+      })
+      .signers([serverOwnerKeypair])
+      .rpc();
+
+    // Ensure request account is closed
+    try {
+      await program.account.inferenceRequestAccount.fetch(requestPda);
+      throw new Error("Request account should be closed but still exists.");
+    } catch (e) {
+      expect(e).to.be.instanceOf(Error);
+      expect(e)
+        .to.have.property("message")
+        .that.includes("Account does not exist");
+    }
+
+    // Fetch new balances
+    const requesterAfter = await provider.connection.getAccountInfo(publicKey);
+    const ownerAfter = await provider.connection.getAccountInfo(
+      serverOwnerKeypair.publicKey
+    );
+
+    const requesterGained =
+      requesterAfter!.lamports - requesterBefore!.lamports;
+    const ownerGained = ownerAfter!.lamports - ownerBefore!.lamports;
+
+    // Ensure server owner received claimed funds
+    expect(ownerGained).to.equal(claimAmount.toNumber());
+
+    // Ensure requester received remaining funds
+    expect(requesterGained).to.be.closeTo(
+      requestBefore!.lamports - claimAmount.toNumber(),
+      5000 // Allow small variance for rent refunds
+    );
   });
 });

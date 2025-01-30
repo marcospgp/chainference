@@ -128,6 +128,7 @@ export type Chainference = {
         },
         {
           "name": "owner",
+          "writable": true,
           "signer": true,
           "relations": [
             "serverAccount"
