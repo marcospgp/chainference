@@ -4,8 +4,9 @@ import './Navbar.css';
 
 import david from '../../assets/david.svg';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { memo } from 'react';
 
-export default function Navbar() {
+const Navbar = () => {
   return (
     <div className='navbar'>
       <div className='navbar-left'>
@@ -30,4 +31,6 @@ export default function Navbar() {
       </div>
     </div>
   );
-}
+};
+
+export default memo(Navbar);

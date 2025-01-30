@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Badge, Flex, ScrollArea, Text, Textarea } from '@mantine/core';
+import React, { useState, useRef, useEffect, useReducer } from 'react';
+import { Badge, Flex, ScrollArea, Text, Textarea, Loader } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useAnchorWallet } from '@solana/wallet-adapter-react';
 
@@ -10,6 +10,7 @@ import SettingsModal from './SettingsModal/SettingsModal';
 import type { Program } from '@coral-xyz/anchor';
 import type { Chainference } from '../../../../solana/target/types/chainference';
 import { createInferenceRequest } from '../../utils/chainferenceProgram';
+import useSolanaProgramListener from '../../hooks/useSolanaProgramListener';
 
 interface ChatMessage {
   id: string;
@@ -18,12 +19,35 @@ interface ChatMessage {
   isTyping?: boolean;
 }
 
+const reducer = (state: any, action: any) => {
+  switch (action.type) {
+    case 'SET_MODEL':
+      return { ...state, model: action.payload };
+    case 'SET_MAX_COST':
+      return { ...state, maxCost: action.payload };
+    default:
+      return state;
+  }
+};
+
 export default function Chat({ program }: { program: Program<Chainference> }) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [opened, { open, close }] = useDisclosure();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(false);
 
+  const programState = useSolanaProgramListener(
+    program.programId,
+    program.provider.connection
+  );
+
+  const initialState = {
+    model: '',
+    maxCost: 0,
+  };
+
+  const [state, dispatch] = useReducer(reducer, initialState);
   const wallet = useAnchorWallet();
 
   const scrollToBottom = () => {
@@ -31,47 +55,54 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
   };
 
   useEffect(() => {
+    if (programState) {
+      setLoading(false);
+    }
+  }, [programState]);
+
+  useEffect(() => {
     scrollToBottom();
   }, [chatMessages]);
 
-  const simulateTypingResponse = (fullResponse: string) => {
-    const responseId = Date.now().toString();
-    let currentText = '';
+  // const simulateTypingResponse = (fullResponse: string) => {
+  //   const responseId = Date.now().toString();
+  //   let currentText = '';
 
-    // Start with empty message
-    setChatMessages((messages) => [
-      ...messages,
-      {
-        id: responseId,
-        text: '',
-        isResponse: true,
-        isTyping: true,
-      },
-    ]);
+  //   // Start with empty message
+  //   setChatMessages((messages) => [
+  //     ...messages,
+  //     {
+  //       id: responseId,
+  //       text: '',
+  //       isResponse: true,
+  //       isTyping: true,
+  //     },
+  //   ]);
 
-    // Simulate typing character by character
-    const typingInterval = setInterval(() => {
-      if (currentText.length < fullResponse.length) {
-        currentText += fullResponse[currentText.length];
-        setChatMessages((messages) =>
-          messages.map((msg) =>
-            msg.id === responseId ? { ...msg, text: currentText } : msg
-          )
-        );
-      } else {
-        // Remove typing indicator when done
-        setChatMessages((messages) =>
-          messages.map((msg) =>
-            msg.id === responseId ? { ...msg, isTyping: false } : msg
-          )
-        );
-        clearInterval(typingInterval);
-      }
-    }, 50); // Adjust speed as needed
-  };
+  //   // Simulate typing character by character
+  //   const typingInterval = setInterval(() => {
+  //     if (currentText.length < fullResponse.length) {
+  //       currentText += fullResponse[currentText.length];
+  //       setChatMessages((messages) =>
+  //         messages.map((msg) =>
+  //           msg.id === responseId ? { ...msg, text: currentText } : msg
+  //         )
+  //       );
+  //     } else {
+  //       // Remove typing indicator when done
+  //       setChatMessages((messages) =>
+  //         messages.map((msg) =>
+  //           msg.id === responseId ? { ...msg, isTyping: false } : msg
+  //         )
+  //       );
+  //       clearInterval(typingInterval);
+  //     }
+  //   }, 50); // Adjust speed as needed
+  // };
 
   const handleSend = () => {
     if (!input.trim()) return;
+    setLoading(true);
 
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -79,7 +110,7 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
       isResponse: false,
     };
 
-    createInferenceRequest(program);
+    createInferenceRequest(program, state.model, state.maxCost);
 
     // Add a small delay when transitioning from empty to has-messages
     if (chatMessages.length === 0) {
@@ -92,11 +123,11 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
     setInput('');
 
     // Simulate a response after a short delay
-    setTimeout(() => {
-      simulateTypingResponse(
-        'hey yooo this is fucking tripping yo i can simulate the prompt response like this and it looks coooooooooooool'
-      );
-    }, 1000);
+    // setTimeout(() => {
+    //   simulateTypingResponse(
+    //     'hey yooo this is fucking tripping yo i can simulate the prompt response like this and it looks coooooooooooool'
+    //   );
+    // }, 1000);
   };
 
   const numOfServers = 2; // Replace with actual number of servers
@@ -106,7 +137,12 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
 
   return (
     <>
-      <SettingsModal opened={opened} onClose={close} />
+      <SettingsModal
+        opened={opened}
+        onClose={close}
+        state={state}
+        dispatch={dispatch}
+      />
       <div
         className={`prompt ${
           chatMessages.length > 0 ? 'has-messages' : 'empty'
@@ -123,6 +159,10 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
                   placeholder='Why is the sky blue?'
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  error={
+                    (state?.maxCost === 0 || state?.model === '') &&
+                    'Please select a model and max cost'
+                  }
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
@@ -145,7 +185,7 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
                   align='center'
                   style={{ alignSelf: 'flex-end' }}
                 >
-                  <Text size='xs'>{`Max price: $${priceInUSD} / SOL ${priceInSOL}`}</Text>
+                  <Text size='xs'>{`Max price: SOL ${state.maxCost}`}</Text>
                 </Flex>
               </div>
             </div>
@@ -170,9 +210,14 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
                 <Textarea
                   variant='unstyled'
                   style={{ flex: 1 }}
+                  disabled={loading}
                   placeholder='Continue the conversation...'
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  error={
+                    (state?.maxCost === 0 || state?.model === '') &&
+                    'Please set a model and max cost'
+                  }
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
@@ -180,7 +225,11 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
                     }
                   }}
                 />
-                <IoSendSharp className='send-icon' onClick={handleSend} />
+                {loading ? (
+                  <Loader className='loader' />
+                ) : (
+                  <IoSendSharp className='send-icon' onClick={handleSend} />
+                )}
               </div>
               <div className='prompt-info'>
                 <IoSettingsSharp className='settings-icon' onClick={open} />
@@ -195,7 +244,7 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
                   align='center'
                   style={{ alignSelf: 'flex-end' }}
                 >
-                  <Text size='xs'>{`Max price: $${priceInUSD} / SOL ${priceInSOL}`}</Text>
+                  <Text size='xs'>{`Max price: SOL ${state.maxCost}`}</Text>
                 </Flex>
               </div>
             </div>

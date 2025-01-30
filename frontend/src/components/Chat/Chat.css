@@ -297,3 +297,8 @@
     }
   }
 }
+
+.loader {
+  align-self: center;
+  margin-right: var(--space-xs);
+}
