@@ -1,37 +1,100 @@
 .prompt {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  width: 100%;
   height: 100%;
+  min-height: 0; /* Prevents flex items from growing beyond container */
+  align-items: center;
+  overflow: hidden;
+  padding: 0 max(var(--space-s), 16px);
 }
 
 .prompt.has-messages {
-  justify-content: flex-end;
-  align-items: center;
+  justify-content: flex-start;
+  padding-top: var(--space-l);
+
+  .prompt-box {
+    margin-bottom: var(--space-l);
+  }
 }
 
 .prompt.empty {
-  align-items: center;
   justify-content: center;
+
+  .prompt-title {
+    text-align: center;
+    margin-bottom: var(--space-xl);
+    animation: fadeInDown 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    opacity: 0;
+    animation-fill-mode: forwards;
+  }
+
+  .prompt-box {
+    transform: translateY(0);
+    animation: fadeInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    opacity: 0;
+    animation-fill-mode: forwards;
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .prompt-box {
   display: flex;
   flex-direction: column;
-
-  margin-bottom: var(--space-xxl);
-
-  padding-top: var(--space-m);
-  padding-bottom: var(--space-m);
-  padding-left: var(--space-l);
-  padding-right: var(--space-l);
+  width: 100%;
+  max-width: var(--text-area-width);
+  padding: var(--space-s);
+  margin-top: auto;
   border-radius: var(--border-radius);
   background-color: var(--color-background-alt);
+  flex-shrink: 0;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s ease,
+    border-color 0.3s ease;
+  transform-origin: center bottom;
+  will-change: transform, box-shadow, background-color;
+  border: 1px solid transparent;
+
+  &:focus-within {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.08);
+    transform: translateY(-4px) scale(1.01);
+    background-color: color-mix(
+      in srgb,
+      var(--color-background-alt) 96%,
+      var(--color-primary)
+    );
+    border-color: var(--color-primary-half);
+  }
 
   .prompt-info {
     display: flex;
     align-items: center;
     gap: var(--space-s);
+    flex-wrap: wrap;
+    margin-top: var(--space-s);
 
     .settings-icon {
       font-size: var(--font-l);
@@ -40,6 +103,7 @@
       transition: color 0.2s ease;
       width: var(--space-m);
       height: var(--space-m);
+      flex-shrink: 0;
 
       &:hover {
         color: var(--color-primary);
@@ -49,49 +113,108 @@
 
   .prompt-input {
     display: flex;
-    align-items: center;
+    flex: 1;
+    align-items: flex-start;
     gap: var(--space-m);
+    position: relative;
+    width: 100%;
+    background: color-mix(in srgb, var(--color-background) 50%, transparent);
+    border-radius: calc(var(--border-radius) * 0.75);
+    padding: var(--space-xs);
 
     textarea {
-      width: var(--text-area-width);
-      height: 75px;
+      flex: 1;
+      height: var(--prompt-height);
       font-family: var(--font-logo) !important;
+      font-size: var(--font-s);
+      padding: var(--space-s) var(--space-m);
+      padding-right: calc(var(--space-xl) + var(--space-s));
+      resize: none;
+      line-height: 1.5;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--color-text);
+      transition: all 0.2s ease;
+
+      &::placeholder {
+        color: color-mix(in srgb, var(--color-text) 50%, transparent);
+      }
+
+      &:focus {
+        outline: none;
+      }
     }
 
     .send-icon {
       font-size: var(--font-l);
       color: var(--color-text);
       cursor: pointer;
-      transition: color 0.2s ease;
+      transition: all 0.2s ease;
+      position: absolute;
+      right: var(--space-s);
+      top: 50%;
+      transform: translateY(-50%);
+      padding: var(--space-xs);
+      border-radius: 50%;
+      background-color: color-mix(
+        in srgb,
+        var(--color-primary) 15%,
+        transparent
+      );
+      width: calc(var(--space-l) * 1.5);
+      height: calc(var(--space-l) * 1.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
 
       &:hover {
-        color: var(--color-primary);
+        color: var(--color-text);
+        background-color: var(--color-primary);
+        transform: translateY(-50%) scale(1.05);
+      }
+
+      &:active {
+        transform: translateY(-50%) scale(0.95);
       }
     }
   }
 
   span {
     font-size: var(--font-s);
+    white-space: nowrap;
   }
 
   .prompt-title {
-    align-self: flex-start;
+    font-size: clamp(var(--font-l), 5vw, var(--font-xl));
+    margin-bottom: var(--space-m);
+    line-height: 1.2;
   }
 }
 
 .messages-container {
-  width: var(--text-area-width);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--text-area-width);
+  flex: 1 1 0%;
+  min-height: 0;
+  max-height: calc(100% - 200px);
   margin-bottom: var(--space-l);
   gap: var(--space-m);
+  overflow-y: auto;
+  padding-right: var(--space-s);
 }
 
 .message {
   width: fit-content;
-  max-width: calc(var(--text-area-width) / 1.5);
+  max-width: min(calc(var(--text-area-width) * 0.8), 85vw);
   background-color: var(--color-primary);
-  padding: var(--space-m);
+  padding: var(--space-s);
   border-radius: var(--border-radius);
   word-wrap: break-word;
+  font-size: var(--font-s);
+  line-height: 1.5;
 }
 
 .message.response {
@@ -116,5 +239,61 @@
   21%,
   100% {
     opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .prompt-box {
+    padding: var(--space-xs);
+    border-radius: calc(var(--border-radius) * 1.2);
+
+    .prompt-input {
+      padding: calc(var(--space-xs) / 1);
+
+      textarea {
+        font-size: 16px;
+        padding: var(--space-s);
+        padding-right: calc(var(--space-xl) + var(--space-xs));
+        min-height: calc(var(--prompt-height) * 0.5);
+        max-height: calc(var(--prompt-height) * 0.8);
+      }
+
+      .send-icon {
+        width: calc(var(--space-l) * 1.4);
+        height: calc(var(--space-l) * 1.4);
+        right: calc(var(--space-xs) / 2);
+      }
+    }
+
+    .prompt-info {
+      padding: var(--space-xs) var(--space-s);
+      margin-top: var(--space-xs);
+      justify-content: space-between;
+    }
+  }
+
+  .messages-container {
+    padding-right: 0;
+  }
+
+  .message {
+    max-width: 85vw;
+    padding: var(--space-s) var(--space-m);
+  }
+}
+
+@media (max-width: 480px) {
+  .prompt-box {
+    padding: calc(var(--space-s) / 1.5);
+
+    .prompt-input textarea {
+      min-height: calc(var(--prompt-height) * 0.4);
+      padding: calc(var(--space-s) / 1.2);
+      line-height: 1.4;
+    }
+
+    .prompt-info {
+      gap: calc(var(--space-xs) / 1.5);
+    }
   }
 }

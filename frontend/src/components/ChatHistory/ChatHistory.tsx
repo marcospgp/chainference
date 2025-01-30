@@ -16,7 +16,7 @@ export default function ChatHistory({ opened, onClose }: ChatHistoryProps) {
     >
       <div className='chat-history'>
         {Array.from({ length: 100 }).map((_, index) => (
-          <div className='chat-entry'>
+          <div className='chat-entry' key={index}>
             <div className='chat-entry-message'>{index}</div>
           </div>
         ))}

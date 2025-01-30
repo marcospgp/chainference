@@ -1,52 +1,48 @@
+@font-face {
+  font-family: 'GreekFreak';
+  src: url('../../assets//fonts/CapitalisTypOasis.ttf') format('truetype');
+}
+
 .navbar {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
+  align-items: center;
 
-  padding: var(--space-l);
+  padding: var(--space-s);
   font-family: var(--font-logo);
 
   .navbar-left {
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: var(--space-m);
+  }
+
+  .navbar-logo {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  .navbar-logo img {
+    margin-bottom: var(--space-s);
+  }
+
+  .navbar-logo-text {
+    font-family: 'GreekFreak';
+    font-weight: 100;
+    font-size: var(--font-l);
+    color: #ffffff;
   }
 
   a {
     color: var(--color-primary);
     text-decoration: none;
+  }
 
-    .navbar-logo {
-      position: relative; /* Anchor for child absolutely positioned elements. */
-
-      h1 {
-        margin: 0;
-        font-size: var(--font-xl);
-      }
-
-      h1:nth-child(1) {
-        position: absolute;
-        left: var(--space-l);
-        bottom: var(--space-m);
-        color: color-mix(in srgb, var(--color-text), black 80%);
-        z-index: 1;
-      }
-
-      h1:nth-child(2) {
-        position: absolute;
-        left: var(--space-m);
-        bottom: var(--space-s);
-        color: color-mix(in srgb, var(--color-text), black 60%);
-        z-index: 2;
-      }
-
-      h1:nth-child(3) {
-        color: var(--color-text);
-        position: relative; /* For z-index to work */
-        z-index: 3;
-      }
-    }
+  h1 {
+    color: '#FFFFFF';
   }
 
   .wallet button {

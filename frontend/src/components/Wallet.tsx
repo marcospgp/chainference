@@ -1,38 +1,32 @@
-import { createAppKit } from "@reown/appkit/react";
-import { SolanaAdapter } from "@reown/appkit-adapter-solana/react";
-import { solana, solanaTestnet, solanaDevnet } from "@reown/appkit/networks";
+import React, { type FC, useMemo } from 'react';
+import {
+  ConnectionProvider,
+  WalletProvider,
+} from '@solana/wallet-adapter-react';
+import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
-} from "@solana/wallet-adapter-wallets";
+} from '@solana/wallet-adapter-wallets';
+import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import { clusterApiUrl } from '@solana/web3.js';
 
-// 0. Set up Solana Adapter
-const solanaWeb3JsAdapter = new SolanaAdapter({
-  wallets: [new PhantomWalletAdapter(), new SolflareWalletAdapter()],
-});
+import '@solana/wallet-adapter-react-ui/styles.css';
 
-// 1. Get projectId from https://cloud.reown.com
-const projectId = "d299503adc7b475a7b9dffb4e518992b";
+export const Wallet: FC<{ children: React.ReactNode }> = ({ children }) => {
+  const network = WalletAdapterNetwork.Devnet;
+  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
 
-// 2. Create a metadata object - optional
-const metadata = {
-  name: "chainference",
-  description: "AppKit Example",
-  url: "https://reown.com/appkit", // origin must match your domain & subdomain
-  icons: ["https://assets.reown.com/reown-profile-pic.png"],
+  const wallets = useMemo(
+    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter()],
+    [network]
+  );
+
+  return (
+    <ConnectionProvider endpoint={endpoint}>
+      <WalletProvider wallets={wallets} autoConnect>
+        <WalletModalProvider>{children}</WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
+  );
 };
-
-// 3. Create modal
-createAppKit({
-  adapters: [solanaWeb3JsAdapter],
-  networks: [solana, solanaTestnet, solanaDevnet],
-  metadata: metadata,
-  projectId,
-  features: {
-    analytics: true, // Optional - defaults to your Cloud configuration
-  },
-});
-
-export default function Wallet() {
-  return <appkit-button />;
-}

@@ -1,18 +1,15 @@
-import React, { useState, useRef, useEffect } from "react";
-import {
-  Badge,
-  Flex,
-  NumberFormatter,
-  ScrollArea,
-  Text,
-  Textarea,
-} from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import React, { useState, useRef, useEffect } from 'react';
+import { Badge, Flex, ScrollArea, Text, Textarea } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
+import { useAnchorWallet } from '@solana/wallet-adapter-react';
 
-import { IoSendSharp, IoSettingsSharp } from "react-icons/io5";
+import { IoSendSharp, IoSettingsSharp } from 'react-icons/io5';
 
-import "./Chat.css";
-import SettingsModal from "./SettingsModal/SettingsModal";
+import './Chat.css';
+import SettingsModal from './SettingsModal/SettingsModal';
+import type { Program } from '@coral-xyz/anchor';
+import type { Chainference } from '../../../../solana/target/types/chainference';
+import { createInferenceRequest } from '../../utils/chainferenceProgram';
 
 interface ChatMessage {
   id: string;
@@ -21,14 +18,16 @@ interface ChatMessage {
   isTyping?: boolean;
 }
 
-export default function Chat() {
+export default function Chat({ program }: { program: Program<Chainference> }) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [opened, { open, close }] = useDisclosure();
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const wallet = useAnchorWallet();
+
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
@@ -37,14 +36,14 @@ export default function Chat() {
 
   const simulateTypingResponse = (fullResponse: string) => {
     const responseId = Date.now().toString();
-    let currentText = "";
+    let currentText = '';
 
     // Start with empty message
     setChatMessages((messages) => [
       ...messages,
       {
         id: responseId,
-        text: "",
+        text: '',
         isResponse: true,
         isTyping: true,
       },
@@ -80,13 +79,22 @@ export default function Chat() {
       isResponse: false,
     };
 
-    setChatMessages([...chatMessages, newMessage]);
-    setInput("");
+    createInferenceRequest(program);
+
+    // Add a small delay when transitioning from empty to has-messages
+    if (chatMessages.length === 0) {
+      setTimeout(() => {
+        setChatMessages([newMessage]);
+      }, 50);
+    } else {
+      setChatMessages([...chatMessages, newMessage]);
+    }
+    setInput('');
 
     // Simulate a response after a short delay
     setTimeout(() => {
       simulateTypingResponse(
-        "hey yooo this is fucking tripping yo i can simulate the prompt response like this and it looks coooooooooooool"
+        'hey yooo this is fucking tripping yo i can simulate the prompt response like this and it looks coooooooooooool'
       );
     }, 1000);
   };
@@ -101,91 +109,93 @@ export default function Chat() {
       <SettingsModal opened={opened} onClose={close} />
       <div
         className={`prompt ${
-          chatMessages.length > 0 ? "has-messages" : "empty"
+          chatMessages.length > 0 ? 'has-messages' : 'empty'
         }`}
       >
         {chatMessages.length === 0 ? (
           <div>
-            <h1 className="prompt-title">Prompt the blockchain</h1>
-            <div className="prompt-box">
-              <div className="prompt-input">
+            <h1 className='prompt-title'>Prompt the blockchain</h1>
+            <div className='prompt-box'>
+              <div className='prompt-input'>
                 <Textarea
-                  variant="unstyled"
-                  placeholder="Why is the sky blue?"
+                  disabled={!wallet}
+                  variant='unstyled'
+                  placeholder='Why is the sky blue?'
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
                       handleSend();
                     }
                   }}
                 />
-                <IoSendSharp className="send-icon" onClick={handleSend} />
+                <IoSendSharp className='send-icon' onClick={handleSend} />
               </div>
-              <div className="prompt-info">
-                <IoSettingsSharp className="settings-icon" onClick={open} />
-                <Badge size="lg">
+              <div className='prompt-info'>
+                <IoSettingsSharp className='settings-icon' onClick={open} />
+                <Badge size='lg'>
                   {`${
                     numOfServers > 0 ? `🟢 ` : `🔴 `
                   }${numOfServers} / ${Math.floor(random)} servers matched`}
                 </Badge>
                 <Flex
                   flex={1}
-                  justify="start"
-                  align="center"
-                  style={{ alignSelf: "flex-end" }}
+                  justify='start'
+                  align='center'
+                  style={{ alignSelf: 'flex-end' }}
                 >
-                  <Text size="xs">{`Max price: $${priceInUSD} / SOL ${priceInSOL}`}</Text>
+                  <Text size='xs'>{`Max price: $${priceInUSD} / SOL ${priceInSOL}`}</Text>
                 </Flex>
               </div>
             </div>
           </div>
         ) : (
           <>
-            <ScrollArea h="60vh" mah="60vh" className="messages-container">
+            <ScrollArea className='messages-container'>
               {chatMessages.map((message) => (
                 <Flex
                   flex={1}
                   key={message.id}
-                  mb={"xl"}
-                  justify={message.isResponse ? "start" : "end"}
+                  mb={'xl'}
+                  justify={message.isResponse ? 'start' : 'end'}
                 >
-                  <div className="message">{message.text}</div>
+                  <div className='message'>{message.text}</div>
                 </Flex>
               ))}
               <div ref={messagesEndRef} />
             </ScrollArea>
-            <div className="prompt-box">
-              <div className="prompt-input">
+            <div className='prompt-box'>
+              <div className='prompt-input'>
                 <Textarea
-                  variant="unstyled"
-                  placeholder="Continue the conversation..."
+                  variant='unstyled'
+                  style={{ flex: 1 }}
+                  placeholder='Continue the conversation...'
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
                       handleSend();
                     }
                   }}
                 />
-                <IoSendSharp className="send-icon" onClick={handleSend} />
+                <IoSendSharp className='send-icon' onClick={handleSend} />
               </div>
-              <div className="prompt-info">
-                <IoSettingsSharp className="settings-icon" onClick={open} />
-                <Badge size="lg">
+              <div className='prompt-info'>
+                <IoSettingsSharp className='settings-icon' onClick={open} />
+                <Badge size='lg'>
                   {`${
                     numOfServers > 0 ? `🟢 ` : `🔴 `
                   }${numOfServers} / ${Math.floor(random)} servers matched`}
                 </Badge>
                 <Flex
                   flex={1}
-                  justify="start"
-                  align="center"
-                  style={{ alignSelf: "flex-end" }}
+                  justify='start'
+                  align='center'
+                  style={{ alignSelf: 'flex-end' }}
                 >
-                  <Text size="xs">{`Max price: $${priceInUSD} / SOL ${priceInSOL}`}</Text>
+                  <Text size='xs'>{`Max price: $${priceInUSD} / SOL ${priceInSOL}`}</Text>
                 </Flex>
               </div>
             </div>

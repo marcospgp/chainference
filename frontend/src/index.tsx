@@ -1,3 +1,6 @@
+import { Buffer } from 'buffer';
+globalThis.Buffer = Buffer;
+
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MantineProvider, createTheme } from '@mantine/core';
@@ -8,17 +11,29 @@ import './index.css';
 import Navbar from './components/Navbar/Navbar';
 import Chat from './components/Chat/Chat';
 import ChatHistory from './components/ChatHistory/ChatHistory';
+import { Wallet } from './components/Wallet';
+import { AnchorProvider, Program, setProvider } from '@coral-xyz/anchor';
+import type { Chainference } from '../../solana/target/types/chainference';
+import idl from '../../solana/target/idl/chainference.json';
+import { useAnchorWallet, useConnection } from '@solana/wallet-adapter-react';
 
 const App = () => {
-  const [opened, { open, close }] = useDisclosure(false);
+  const [opened, { close }] = useDisclosure(false);
+
+  const wallet = useAnchorWallet();
+  const { connection } = useConnection();
+
+  setProvider(new AnchorProvider(connection, wallet!, {}));
+
+  const program = new Program(idl as Chainference) as Program<Chainference>;
 
   return (
     <MantineProvider theme={createTheme({})} defaultColorScheme='dark'>
-      <Navbar onMenuClick={open} />
+      <Navbar />
       <div className='main'>
         <div className='chat-container'>
           <ChatHistory opened={opened} onClose={close} />
-          <Chat />
+          <Chat program={program} />
         </div>
       </div>
     </MantineProvider>
@@ -30,6 +45,8 @@ const root = createRoot(rootElement!);
 
 root.render(
   <StrictMode>
-    <App />
+    <Wallet>
+      <App />
+    </Wallet>
   </StrictMode>
 );
