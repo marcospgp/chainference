@@ -5,13 +5,13 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-chainference = "9jqV7her1GXtVidpqYDvW24EHfbtnUMFP1kjC5ZY5Wih"
+chainference = "7Gz2FThJQ3bqJsub9MLcZrbktub2HmyWksYSX2z8WQgH"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "Localnet"
 wallet = "wallet.json"
 
 [scripts]

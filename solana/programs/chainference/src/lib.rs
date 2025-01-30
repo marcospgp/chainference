@@ -4,13 +4,13 @@
 
 use anchor_lang::prelude::*;
 
-declare_id!("9jqV7her1GXtVidpqYDvW24EHfbtnUMFP1kjC5ZY5Wih");
+declare_id!("7Gz2FThJQ3bqJsub9MLcZrbktub2HmyWksYSX2z8WQgH");
 
 #[program]
 pub mod chainference {
     use super::*;
 
-    pub fn add_server(ctx: Context<AddServerInput>, models: Vec<ModelListing>) -> Result<()> {
+    pub fn add_server(ctx: Context<AddServerCtx>, models: Vec<ModelListing>) -> Result<()> {
         // Limit max model listings per server.
         if models.len() > 256 {
             return Err(ProgramError::InvalidArgument.into());
@@ -25,12 +25,12 @@ pub mod chainference {
         Ok(())
     }
 
-    pub fn close_server(_ctx: Context<CloseServerInput>) -> Result<()> {
+    pub fn close_server(_ctx: Context<CloseServerCtx>) -> Result<()> {
         Ok(())
     }
 
     pub fn request_inference(
-        ctx: Context<RequestInput>,
+        ctx: Context<InferenceRequestCtx>,
         model: String,
         max_cost: u64,
     ) -> Result<()> {
@@ -55,6 +55,27 @@ pub mod chainference {
 
         Ok(())
     }
+
+    pub fn lock_request(ctx: Context<LockRequestCtx>, send_prompt_to: String) -> Result<()> {
+        let request = &mut ctx.accounts.request;
+        let server = &ctx.accounts.server;
+
+        // Ensure server provides the requested model
+        if !server.models.iter().any(|m| m.id == request.model) {
+            return Err(ProgramError::InvalidArgument.into());
+        }
+
+        // Ensure request is not already locked
+        if request.locked_by.is_some() {
+            return Err(ProgramError::InvalidArgument.into());
+        }
+
+        // Lock the request
+        request.locked_by = Some(ctx.accounts.owner.key());
+        request.send_prompt_to = send_prompt_to;
+
+        Ok(())
+    }
 }
 
 #[account]
@@ -63,7 +84,7 @@ pub struct ServerAccount {
     pub owner: Pubkey,
     // Hugging face model IDs and corresponding price per 1M output tokens.
     // Max len preallocates space for entries.
-    #[max_len(0)] // We set size later based on client input.
+    #[max_len(0)] // We set size later.
     pub models: Vec<ModelListing>,
     // Timestamp of last heartbeat.
     pub last_heartbeat: i64,
@@ -71,25 +92,28 @@ pub struct ServerAccount {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, InitSpace)]
 pub struct ModelListing {
-    #[max_len(0)] // We set size later based on client input.
+    #[max_len(0)] // We set size later.
     pub id: String,
     pub price: u64,
 }
 
 #[account]
 #[derive(InitSpace)]
-pub struct Request {
+pub struct InferenceRequestAccount {
     pub requester: Pubkey,
-    #[max_len(0)] // We set size later based on client input.
+    #[max_len(0)] // We set size later.
     pub model: String,
     // Max cost in lamports for entire inference.
     // This account will hold this value in the balance.
     pub max_cost: u64,
+    pub locked_by: Option<Pubkey>,
+    #[max_len(128)]
+    pub send_prompt_to: String,
 }
 
 #[derive(Accounts)]
 #[instruction(models: Vec<ModelListing>)]
-pub struct AddServerInput<'info> {
+pub struct AddServerCtx<'info> {
     #[account(
         init,
         payer = owner,
@@ -104,29 +128,45 @@ pub struct AddServerInput<'info> {
 }
 
 #[derive(Accounts)]
-pub struct CloseServerInput<'info> {
+pub struct CloseServerCtx<'info> {
     #[account(
         mut,
         close = owner,
         has_one = owner
     )]
     pub server_account: Account<'info, ServerAccount>,
-    #[account(mut)]
+    #[account()]
     pub owner: Signer<'info>,
 }
 
 #[derive(Accounts)]
 #[instruction(model: String)]
-pub struct RequestInput<'info> {
+pub struct InferenceRequestCtx<'info> {
     pub system_program: Program<'info, System>,
     #[account(
         init,
         payer = requester,
-        space = 8 + Request::INIT_SPACE + model.len(),
+        space = 8 + InferenceRequestAccount::INIT_SPACE + model.len(),
         seeds = [b"request", requester.key().as_ref()],
         bump
     )]
-    pub request: Account<'info, Request>,
+    pub request: Account<'info, InferenceRequestAccount>,
     #[account(mut)]
     pub requester: Signer<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction(send_prompt_to: String)]
+pub struct LockRequestCtx<'info> {
+    #[account(mut)]
+    pub request: Account<'info, InferenceRequestAccount>,
+
+    #[account(
+        mut,
+        has_one = owner
+    )]
+    pub server: Account<'info, ServerAccount>,
+
+    #[account()]
+    pub owner: Signer<'info>,
 }
