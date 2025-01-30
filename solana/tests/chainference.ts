@@ -14,11 +14,11 @@ const serverOwnerKeypair = anchor.web3.Keypair.generate();
 const models = [
   {
     id: "mlx-community/Llama-3.2-3B-Instruct-4bit",
-    price: new anchor.BN(400000), // Lamports per 1M output tokens
+    price: new anchor.BN(400000),
   },
   {
     id: "mlx-community/Llama-3.2-3B-Instruct-8bit",
-    price: new anchor.BN(800000), // Lamports per 1M output tokens
+    price: new anchor.BN(800000),
   },
 ];
 
