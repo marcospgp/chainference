@@ -7,4 +7,5 @@ test-ledger
 
 target/*
 !target/types/
+!target/idl/
 wallet.json
