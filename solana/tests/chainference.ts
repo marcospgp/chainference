@@ -22,12 +22,45 @@ const models = [
   },
 ];
 
+async function adjustBalance(
+  keypair: anchor.web3.Keypair,
+  targetBalance: number
+) {
+  const { connection } = provider;
+  const balance = await connection.getBalance(keypair.publicKey);
+  const diff = targetBalance - balance;
+
+  if (diff !== 0) {
+    const tx =
+      diff > 0
+        ? connection.requestAirdrop(keypair.publicKey, diff)
+        : provider.sendAndConfirm(
+            new anchor.web3.Transaction().add(
+              anchor.web3.SystemProgram.transfer({
+                fromPubkey: keypair.publicKey,
+                toPubkey: new anchor.web3.PublicKey(
+                  "1nc1nerator11111111111111111111111111111111"
+                ),
+                lamports: -diff,
+              })
+            ),
+            [keypair]
+          );
+
+    await tx;
+  }
+}
+
 describe("Chainference", function () {
   // Tell Mocha to be patient with our tests.
   // Otherwise test times show up in red when they're not that high for a solana app.
   this.slow(2000);
 
   before(async () => {
+    // Make sure default wallet doesn't have too many SOL to avoid floating point inaccuracies.
+    // See https://github.com/coral-xyz/anchor/issues/3524
+    await adjustBalance((provider.wallet as anchor.Wallet).payer, 1e9);
+
     // Fund server owner wallet.
     const latestBlockhash = await provider.connection.getLatestBlockhash();
     const sig = await provider.connection.requestAirdrop(
@@ -185,31 +218,35 @@ describe("Chainference", function () {
     expect(requestAccount.sendPromptTo).to.equal(sendPromptTo);
   });
 
-  it("doesn't let the same request be locked twice", async () => {
-    // TODO
-  });
+  // it("doesn't let the same request be locked twice", async () => {
+  //   // TODO
+  // });
 
-  it("doesn't let a server without the requested model lock a request", async () => {
-    // TODO
-  });
+  // it("doesn't let a server without the requested model lock a request", async () => {
+  //   // TODO
+  // });
 
   it("claims payment for a locked request", async () => {
-    const claimAmount = new anchor.BN(600_000);
-
     // Fetch existing locked request
     const requests = await program.account.inferenceRequestAccount.all();
     expect(requests).to.have.length(1);
     const requestPda = requests[0]!.publicKey;
-    // Fetch initial balances
-    const requestBefore = await provider.connection.getAccountInfo(requestPda);
-    const requesterBefore = await provider.connection.getAccountInfo(publicKey);
-    const ownerBefore = await provider.connection.getAccountInfo(
+
+    // Fetch initial balances (Anchor should already return BN)
+    const requestBefore = (await provider.connection.getAccountInfo(
+      requestPda
+    ))!.lamports;
+    const requesterBefore = (await provider.connection.getAccountInfo(
+      publicKey
+    ))!.lamports;
+    const ownerBefore = (await provider.connection.getAccountInfo(
       serverOwnerKeypair.publicKey
-    );
+    ))!.lamports;
 
-    expect(requestBefore!.lamports).to.be.at.least(claimAmount.toNumber());
+    const claimAmount = new anchor.BN(600_000);
+    expect(requestBefore).to.be.at.least(claimAmount.toNumber());
 
-    await program.methods
+    const tx = await program.methods
       .claimPayment(claimAmount)
       .accounts({
         request: requestPda,
@@ -218,10 +255,23 @@ describe("Chainference", function () {
       .signers([serverOwnerKeypair])
       .rpc();
 
-    // Ensure request account is closed
+    // Wait for confirmation
+    let txInfo = null;
+    for (let i = 0; i < 100; i++) {
+      txInfo = await provider.connection.getTransaction(tx, {
+        commitment: "confirmed",
+        maxSupportedTransactionVersion: 0,
+      });
+
+      if (txInfo !== null) {
+        break;
+      }
+    }
+    expect(txInfo).to.not.be.null;
+
     try {
       await program.account.inferenceRequestAccount.fetch(requestPda);
-      throw new Error("Request account should be closed but still exists.");
+      throw null;
     } catch (e) {
       expect(e).to.be.instanceOf(Error);
       expect(e)
@@ -229,23 +279,21 @@ describe("Chainference", function () {
         .that.includes("Account does not exist");
     }
 
-    // Fetch new balances
-    const requesterAfter = await provider.connection.getAccountInfo(publicKey);
-    const ownerAfter = await provider.connection.getAccountInfo(
+    // Fetch balances after transaction
+    const requesterAfter = (await provider.connection.getAccountInfo(
+      publicKey
+    ))!.lamports;
+    const ownerAfter = (await provider.connection.getAccountInfo(
       serverOwnerKeypair.publicKey
-    );
+    ))!.lamports;
 
-    const requesterGained =
-      requesterAfter!.lamports - requesterBefore!.lamports;
-    const ownerGained = ownerAfter!.lamports - ownerBefore!.lamports;
+    const fee = txInfo!.meta!.fee;
+    const requesterGained = requesterAfter - requesterBefore;
+    const ownerGained = ownerAfter - ownerBefore;
+    const expectedRefund = requestBefore - claimAmount.toNumber() - fee;
 
-    // Ensure server owner received claimed funds
     expect(ownerGained).to.equal(claimAmount.toNumber());
-
-    // Ensure requester received remaining funds
-    expect(requesterGained).to.be.closeTo(
-      requestBefore!.lamports - claimAmount.toNumber(),
-      5000 // Allow small variance for rent refunds
-    );
+    expect(ownerGained + requesterGained + fee).to.equal(requestBefore);
+    expect(requesterGained).to.be.equal(expectedRefund);
   });
 });

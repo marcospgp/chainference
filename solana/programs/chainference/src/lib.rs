@@ -202,7 +202,8 @@ pub struct LockRequestCtx<'info> {
 pub struct ClaimPaymentCtx<'info> {
     #[account(
         mut,
-        has_one = requester
+        has_one = requester,
+        close = requester
     )]
     pub request: Account<'info, InferenceRequestAccount>,
 

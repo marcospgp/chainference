@@ -49,10 +49,14 @@ Rust dependencies should be installed automatically by Rust analyzer in VSCode, 
 ## Running
 
 - `anchor build` to build project
-- `anchor test` to run tests (this will also build the project)
+- `anchor test` to run tests on localnet (this will also build the project)
   - `anchor test --provider.cluster devnet` to test on devnet. This will also deploy the program.
 
 The [Solana playground](https://beta.solpg.io/) can also be used.
+
+The localnet can be run separately with `anchor localnet`. Tests can then be run with `anchor test --skip-local-validator --skip-deploy`.
+
+You can explore the localnet ledger on [Solana explorer](https://explorer.solana.com/?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899) by telling it to connect to `http://localhost:8899`.
 
 ## Deploying and undeploying
 
