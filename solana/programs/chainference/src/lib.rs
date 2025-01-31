@@ -3,8 +3,21 @@
 #![allow(unexpected_cfgs)]
 
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program;
 
 declare_id!("7Gz2FThJQ3bqJsub9MLcZrbktub2HmyWksYSX2z8WQgH");
+
+#[error_code]
+pub enum ChainferenceError {
+    #[msg("Server locking inference request does not provide requested model.")]
+    ModelNotProvided,
+    #[msg("Inference request has already been locked.")]
+    RequestAlreadyLocked,
+    #[msg("Trying to claim payment from inference request that hasn't previously been locked by claimer.")]
+    ClaimingNonLockedRequest,
+    #[msg("Payment claim exceeds max cost of inference request.")]
+    ClaimTooLarge,
+}
 
 #[program]
 pub mod chainference {
@@ -30,16 +43,16 @@ pub mod chainference {
     }
 
     pub fn request_inference(
-        ctx: Context<InferenceRequestCtx>,
+        ctx: Context<RequestInferenceCtx>,
         model: String,
         max_cost: u64,
     ) -> Result<()> {
-        let ix = anchor_lang::solana_program::system_instruction::transfer(
+        let ix = solana_program::system_instruction::transfer(
             ctx.accounts.requester.key,
             ctx.accounts.request.to_account_info().key,
             max_cost,
         );
-        anchor_lang::solana_program::program::invoke(
+        solana_program::program::invoke(
             &ix,
             &[
                 ctx.accounts.requester.to_account_info(),
@@ -56,19 +69,23 @@ pub mod chainference {
         Ok(())
     }
 
+    pub fn cancel_request(_ctx: Context<CancelRequestCtx>) -> Result<()> {
+        Ok(())
+    }
+
     pub fn lock_request(ctx: Context<LockRequestCtx>, send_prompt_to: String) -> Result<()> {
         let request = &mut ctx.accounts.request;
         let server = &ctx.accounts.server;
 
-        // Ensure server provides the requested model
-        if !server.models.iter().any(|m| m.id == request.model) {
-            return Err(ProgramError::InvalidArgument.into());
-        }
+        require!(
+            server.models.iter().any(|m| m.id == request.model),
+            ChainferenceError::ModelNotProvided
+        );
 
-        // Ensure request is not already locked
-        if request.locked_by.is_some() {
-            return Err(ProgramError::InvalidArgument.into());
-        }
+        require!(
+            request.locked_by.is_none(),
+            ChainferenceError::RequestAlreadyLocked
+        );
 
         // Lock the request
         request.locked_by = Some(ctx.accounts.owner.key());
@@ -79,29 +96,22 @@ pub mod chainference {
 
     pub fn claim_payment(ctx: Context<ClaimPaymentCtx>, amount: u64) -> Result<()> {
         let request = &mut ctx.accounts.request;
-        let server_owner = &mut ctx.accounts.server_owner;
-        let requester = &mut ctx.accounts.requester;
+        let server_owner = &ctx.accounts.server_owner;
 
-        if request.locked_by != Some(server_owner.key()) {
-            return Err(ProgramError::InvalidArgument.into());
-        }
+        require!(
+            request.locked_by == Some(server_owner.key()),
+            ChainferenceError::ClaimingNonLockedRequest
+        );
 
-        if amount > request.max_cost {
-            return Err(ProgramError::InvalidArgument.into());
-        }
+        require!(amount <= request.max_cost, ChainferenceError::ClaimTooLarge);
 
-        let total_balance = **request.to_account_info().lamports.borrow();
-        let remaining_balance = total_balance.saturating_sub(amount);
+        ctx.accounts.request.sub_lamports(amount)?;
+        ctx.accounts.server_owner.add_lamports(amount)?;
 
-        **request.to_account_info().try_borrow_mut_lamports()? -= amount;
-        **server_owner.to_account_info().try_borrow_mut_lamports()? += amount;
+        // Remaining request balance will be returned to requester when closing the request account,
+        // as per this instruction's context.
 
-        if remaining_balance > 0 {
-            **request.to_account_info().try_borrow_mut_lamports()? -= remaining_balance;
-            **requester.to_account_info().try_borrow_mut_lamports()? += remaining_balance;
-        }
-
-        request.max_cost = 0;
+        (&mut ctx.accounts.request).max_cost = 0;
 
         Ok(())
     }
@@ -170,8 +180,7 @@ pub struct CloseServerCtx<'info> {
 
 #[derive(Accounts)]
 #[instruction(model: String)]
-pub struct InferenceRequestCtx<'info> {
-    pub system_program: Program<'info, System>,
+pub struct RequestInferenceCtx<'info> {
     #[account(
         init,
         payer = requester,
@@ -181,6 +190,21 @@ pub struct InferenceRequestCtx<'info> {
     )]
     pub request: Account<'info, InferenceRequestAccount>,
     #[account(mut)]
+    pub requester: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction()]
+pub struct CancelRequestCtx<'info> {
+    #[account(
+        mut,
+        close = requester,
+        seeds = [b"request", requester.key().as_ref()],
+        bump
+    )]
+    pub request: Account<'info, InferenceRequestAccount>,
+    #[account()]
     pub requester: Signer<'info>,
 }
 
@@ -206,10 +230,8 @@ pub struct ClaimPaymentCtx<'info> {
         close = requester
     )]
     pub request: Account<'info, InferenceRequestAccount>,
-
     #[account(mut)]
     pub server_owner: Signer<'info>,
-
     #[account(mut)]
     pub requester: SystemAccount<'info>,
 }

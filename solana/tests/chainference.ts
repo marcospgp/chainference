@@ -8,8 +8,9 @@ const program = anchor.workspace.Chainference as Program<Chainference>;
 const provider = anchor.AnchorProvider.env();
 anchor.setProvider(provider);
 
-const publicKey = provider.wallet.publicKey;
 const serverOwnerKeypair = anchor.web3.Keypair.generate();
+
+const TX_FEE = 5000;
 
 const models = [
   {
@@ -159,29 +160,103 @@ describe("Chainference", function () {
       {
         memcmp: {
           offset: 8, // Skip the 8-byte discriminator
-          bytes: publicKey.toBase58(), // Filter by requester Pubkey
+          bytes: provider.publicKey.toBase58(), // Filter by requester Pubkey
         },
       },
     ]);
 
     expect(requests).to.have.length(1);
     const req = requests[0];
-    expect(req!.account.requester.toString()).to.equal(publicKey.toString());
+    expect(req!.account.requester.toString()).to.equal(
+      provider.publicKey.toString()
+    );
     expect(req!.account.model).to.equal(model);
     expect(req!.account.maxCost.toString()).to.equal(maxCost.toString());
     expect(req!.account.sendPromptTo).to.be.a("string").that.is.empty;
     expect(req!.account.lockedBy).to.be.null;
 
-    const lamports = (await provider.connection.getAccountInfo(req!.publicKey))!
-      .lamports;
+    const lamports = await provider.connection.getBalance(req!.publicKey);
 
     expect(lamports).to.be.at.least(maxCost);
+
+    // Cancel the inference request.
+    await program.methods.cancelRequest().rpc();
   });
 
+  it("cancels inference request", async () => {
+    const model = "this-will-be-cancelled";
+
+    await program.methods.requestInference(model, new anchor.BN(999)).rpc();
+
+    const requests = await program.account.inferenceRequestAccount.all([
+      {
+        memcmp: {
+          offset: 8, // Skip the 8-byte discriminator
+          bytes: provider.publicKey.toBase58(), // Filter by requester Pubkey
+        },
+      },
+    ]);
+
+    const req = requests.find((x) => x.account.model === model);
+    expect(req).to.not.be.undefined;
+
+    const balanceBeforeCancel = await provider.connection.getBalance(
+      provider.publicKey
+    );
+
+    const reqBalance = await provider.connection.getBalance(req!.publicKey);
+
+    await program.methods.cancelRequest().rpc();
+
+    // Ensure the request account no longer exists.
+    try {
+      await program.account.inferenceRequestAccount.fetch(req!.publicKey);
+      throw null;
+    } catch (e) {
+      expect(e).to.be.instanceOf(Error);
+      expect(e)
+        .to.have.property("message")
+        .that.includes("Account does not exist");
+    }
+
+    // Ensure the requester received the refunded lamports
+    const balanceAfter = await provider.connection.getBalance(
+      provider.publicKey
+    );
+    const expectedBalance = balanceBeforeCancel + reqBalance - TX_FEE;
+
+    expect(balanceAfter).to.equal(expectedBalance);
+  });
+
+  // it("does not cancel locked inference request", async () => {
+  //   // TODO
+  // })
+
+  // it("does not allow non-creator to cancel inference request", async () => {
+  //   // TODO
+  // })
+
   it("locks inference request", async () => {
-    // Create server first
+    // Create inference request
     await program.methods
-      .addServer(models)
+      .requestInference(
+        "some-model/lot-of-parameters",
+        new anchor.BN(1_000_000)
+      )
+      .rpc();
+
+    // Create server account.
+    await program.methods
+      .addServer([
+        {
+          id: "mlx-community/Llama-3.2-3B-Instruct-4bit",
+          price: new anchor.BN(400000),
+        },
+        {
+          id: "some-model/lot-of-parameters",
+          price: new anchor.BN(1600000),
+        },
+      ])
       .accounts({
         owner: serverOwnerKeypair.publicKey,
       })
@@ -233,21 +308,31 @@ describe("Chainference", function () {
     const requestPda = requests[0]!.publicKey;
 
     // Fetch initial balances (Anchor should already return BN)
-    const requestBefore = (await provider.connection.getAccountInfo(
-      requestPda
-    ))!.lamports;
-    const requesterBefore = (await provider.connection.getAccountInfo(
-      publicKey
-    ))!.lamports;
-    const ownerBefore = (await provider.connection.getAccountInfo(
+    const requestBalance = await provider.connection.getBalance(requestPda);
+    const requesterBefore = await provider.connection.getBalance(
+      provider.publicKey
+    );
+    const ownerBefore = await provider.connection.getBalance(
       serverOwnerKeypair.publicKey
-    ))!.lamports;
+    );
 
-    const claimAmount = new anchor.BN(600_000);
-    expect(requestBefore).to.be.at.least(claimAmount.toNumber());
+    const claimAmount = 600_000;
+    expect(requestBalance).to.be.at.least(claimAmount);
 
-    const tx = await program.methods
-      .claimPayment(claimAmount)
+    // Set provider to server owner, otherwise default provider will also sign transaction.
+    const serverProvider = new anchor.AnchorProvider(
+      provider.connection,
+      new anchor.Wallet(serverOwnerKeypair),
+      {}
+    );
+    // anchor.setProvider(
+    //   serverProvider
+    // );
+
+    const serverProgram = new anchor.Program(program.idl, serverProvider);
+
+    await serverProgram.methods
+      .claimPayment(new anchor.BN(claimAmount))
       .accounts({
         request: requestPda,
         serverOwner: serverOwnerKeypair.publicKey,
@@ -255,19 +340,8 @@ describe("Chainference", function () {
       .signers([serverOwnerKeypair])
       .rpc();
 
-    // Wait for confirmation
-    let txInfo = null;
-    for (let i = 0; i < 100; i++) {
-      txInfo = await provider.connection.getTransaction(tx, {
-        commitment: "confirmed",
-        maxSupportedTransactionVersion: 0,
-      });
-
-      if (txInfo !== null) {
-        break;
-      }
-    }
-    expect(txInfo).to.not.be.null;
+    // Reset provider.
+    anchor.setProvider(provider);
 
     try {
       await program.account.inferenceRequestAccount.fetch(requestPda);
@@ -279,21 +353,18 @@ describe("Chainference", function () {
         .that.includes("Account does not exist");
     }
 
-    // Fetch balances after transaction
-    const requesterAfter = (await provider.connection.getAccountInfo(
-      publicKey
-    ))!.lamports;
-    const ownerAfter = (await provider.connection.getAccountInfo(
+    const requesterAfter = await provider.connection.getBalance(
+      provider.publicKey
+    );
+    const ownerAfter = await provider.connection.getBalance(
       serverOwnerKeypair.publicKey
-    ))!.lamports;
+    );
 
-    const fee = txInfo!.meta!.fee;
     const requesterGained = requesterAfter - requesterBefore;
     const ownerGained = ownerAfter - ownerBefore;
-    const expectedRefund = requestBefore - claimAmount.toNumber() - fee;
+    const expectedRefund = requestBalance - claimAmount;
 
-    expect(ownerGained).to.equal(claimAmount.toNumber());
-    expect(ownerGained + requesterGained + fee).to.equal(requestBefore);
-    expect(requesterGained).to.be.equal(expectedRefund);
+    expect(ownerGained).to.equal(claimAmount - TX_FEE);
+    expect(requesterGained).to.equal(expectedRefund);
   });
 });

@@ -73,6 +73,50 @@ export type Chainference = {
       ]
     },
     {
+      "name": "cancelRequest",
+      "discriminator": [
+        65,
+        196,
+        177,
+        247,
+        83,
+        151,
+        33,
+        130
+      ],
+      "accounts": [
+        {
+          "name": "request",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  113,
+                  117,
+                  101,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "requester"
+              }
+            ]
+          }
+        },
+        {
+          "name": "requester",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "claimPayment",
       "discriminator": [
         69,
@@ -187,10 +231,6 @@ export type Chainference = {
       ],
       "accounts": [
         {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
-        },
-        {
           "name": "request",
           "writable": true,
           "pda": {
@@ -218,6 +258,10 @@ export type Chainference = {
           "name": "requester",
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
@@ -258,6 +302,28 @@ export type Chainference = {
         79,
         126
       ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "modelNotProvided",
+      "msg": "Server locking inference request does not provide requested model."
+    },
+    {
+      "code": 6001,
+      "name": "requestAlreadyLocked",
+      "msg": "Inference request has already been locked."
+    },
+    {
+      "code": 6002,
+      "name": "claimingNonLockedRequest",
+      "msg": "Trying to claim payment from inference request that hasn't previously been locked by claimer."
+    },
+    {
+      "code": 6003,
+      "name": "claimTooLarge",
+      "msg": "Payment claim exceeds max cost of inference request."
     }
   ],
   "types": [
