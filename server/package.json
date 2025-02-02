@@ -1,0 +1,12 @@
+{
+  "name": "chainference-server",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@tsconfig/strictest": "^2.0.5",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

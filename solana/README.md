@@ -2,7 +2,11 @@
 
 Solana smart contract code.
 
-The smart contract code is in `solana/programs/chainference/src/lib.rs`
+Main folders to look at:
+
+- Smart contract code is in [`programs/chainference/src/`](programs/chainference/src/)
+- Tests are in [`tests/`](tests/)
+  - These are a good reference for a client side that interacts with the smart contract.
 
 There are a lot of files because `anchor init` generates them. I tried to simplify, but then `anchor build` stops working with no error message.
 
@@ -14,7 +18,6 @@ There are a lot of files because `anchor init` generates them. I tried to simpli
 - [Solana](https://solana.com/docs/intro/installation)
 - [Anchor](https://www.anchor-lang.com/docs/installation)
 
-  - May have to install with `avm install 6fbfc40` to get [this PR](https://github.com/coral-xyz/anchor/pull/3396) which fixes some warnings and hasn't made it into a release yet.
   - There is [an issue](https://github.com/coral-xyz/anchor/issues/3392#issuecomment-2508412018) with `Cargo.lock` that should be fixed in upcoming release v0.31:
 
     ```
