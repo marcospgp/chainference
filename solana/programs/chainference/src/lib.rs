@@ -1,5 +1,5 @@
 // This line is required to avoid displaying some warnings.
-// See: https://github.com/coral-xyz/anchor/pull/3396
+// See: https://github.com/coral-xyz/anchor/pull/3396#issuecomment-2614498113
 #![allow(unexpected_cfgs)]
 
 use anchor_lang::prelude::*;
