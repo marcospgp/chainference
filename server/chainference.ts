@@ -26,9 +26,9 @@ export default async function loadChainference(
 
   anchor.setProvider(provider);
 
-  const chainference = new anchor.Program(idl as Chainference, {
-    connection: provider.connection,
-  });
+  const chainference = new anchor.Program(idl as Chainference, provider);
+
+  chainference.provider;
 
   return chainference;
 }

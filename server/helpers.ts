@@ -54,33 +54,6 @@ export async function airdropSol(
   );
 }
 
-export async function setAnchorProvider(
-  wallet: anchor.web3.Keypair,
-  isProd: boolean
-) {
-  let connection: anchor.web3.Connection;
-
-  if (isProd) {
-    console.log("Connecting to mainnet...");
-    connection = new anchor.web3.Connection(
-      "https://api.mainnet-beta.solana.com"
-    );
-  } else {
-    console.log("Connecting to devnet...");
-    connection = new anchor.web3.Connection("https://api.devnet.solana.com");
-  }
-
-  const provider = new anchor.AnchorProvider(
-    connection,
-    new anchor.Wallet(wallet),
-    {}
-  );
-
-  anchor.setProvider(provider);
-
-  return provider;
-}
-
 export async function airdropSolIfBalanceBelow(
   publicKey: anchor.web3.PublicKey,
   minBalanceSol: number,
