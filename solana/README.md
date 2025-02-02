@@ -63,9 +63,15 @@ You can explore the localnet ledger on [Solana explorer](https://explorer.solana
 
 ## Deploying and undeploying
 
-Deploy with `anchor deploy`. Make sure you're on either localnet or devnet and have configured anchor to use the correct wallet (unless this is the real deploy).
+Before deploying, make sure you have configured Solana to use the project's wallet:
 
-The program can be closed with `solana program close <program ID>`, which reclaims previously paid SOL for 2-year rent.
+```sh
+solana config set --keypair $PWD/wallet.json
+```
+
+You can then deploy with `anchor deploy`. Unless this is a production deploy, make sure you're on either localnet or devnet (`provider.cluster` field in [`Anchor.toml`](Anchor.toml)).
+
+The program can be closed with `solana program close <program ID>`, which reclaims the previously 2-year rent down payment.
 
 After closing you will need to rotate the program key by deleting the `target` folder and running `anchor keys sync`:
 
@@ -75,4 +81,4 @@ Error: WARNING! Closed programs cannot be recreated at the same program id. Once
 
 ## Gotchas
 
-- We no longer need to call `accounts()` if all accounts can be auto resolved on the client. See: <https://github.com/coral-xyz/anchor/issues/3515>. But because I'm not even sure what this means, I think I'll just use `accountsStrict()` for the old behavior that is currently documented.
+- [Automatic account resolution when calling `.accounts()`](https://github.com/coral-xyz/anchor/issues/3515)
