@@ -81,7 +81,7 @@ export async function setAnchorProvider(
   return provider;
 }
 
-export async function maybeAirdropSol(
+export async function airdropSolIfBalanceBelow(
   publicKey: anchor.web3.PublicKey,
   minBalanceSol: number,
   connection: anchor.web3.Connection

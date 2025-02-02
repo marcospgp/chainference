@@ -1,9 +1,6 @@
-import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
-import type { Chainference } from "../solana/target/types/chainference";
 import * as helpers from "./helpers";
-
 import { Command } from "commander";
+import loadChainference from "./chainference";
 
 const program = new Command();
 
@@ -16,16 +13,22 @@ program.command("start").action(async () => {
   console.log(`Running in ${isProd ? "production" : "development"} mode.`);
   const wallet = helpers.loadOrCreateWallet();
 
-  const provider = await helpers.setAnchorProvider(wallet, isProd);
+  const chainference = await loadChainference(wallet, isProd);
 
   console.log(
     `Wallet balance: ${await helpers.getBalanceSol(
       wallet.publicKey,
-      provider.connection
+      chainference.provider.connection
     )} SOL`
   );
 
-  helpers.maybeAirdropSol(wallet.publicKey, 1, provider.connection);
+  if (!isProd) {
+    helpers.airdropSolIfBalanceBelow(
+      wallet.publicKey,
+      1,
+      chainference.provider.connection
+    );
+  }
 });
 
 program.parse();
