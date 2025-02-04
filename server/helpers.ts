@@ -1,6 +1,8 @@
 import fs from "fs";
 import path from "path";
 import * as anchor from "@coral-xyz/anchor";
+import type { Chainference } from "../solana/target/types/chainference";
+import { PublicKey } from "@solana/web3.js";
 
 const WALLET_PATH = path.join(__dirname, "wallet.json");
 
@@ -42,16 +44,8 @@ export async function airdropSol(
 ) {
   const lamports = solAmount * anchor.web3.LAMPORTS_PER_SOL;
   const signature = await connection.requestAirdrop(publicKey, lamports);
-  const latestBlockhash = await connection.getLatestBlockhash();
 
-  await connection.confirmTransaction(
-    {
-      signature,
-      blockhash: latestBlockhash.blockhash,
-      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-    },
-    "confirmed"
-  );
+  await waitForConfirmation([signature]);
 }
 
 export async function airdropSolIfBalanceBelow(
@@ -87,8 +81,27 @@ export async function waitForConfirmation(transactions: string[]) {
           blockhash: latestBlockhash.blockhash,
           lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
         },
-        "confirmed"
+        "finalized"
       )
     )
   );
+}
+
+export function closeServerOnExit(
+  publicKey: PublicKey,
+  program: anchor.Program<Chainference>
+) {
+  async function closeServer() {
+    console.log(`\nClosing server...`);
+
+    await program.methods
+      .closeServer()
+      .accounts({ serverAccount: publicKey })
+      .rpc();
+
+    process.exit(0);
+  }
+
+  process.on("SIGINT", closeServer);
+  process.on("SIGTERM", closeServer);
 }

@@ -8,9 +8,7 @@ type Model = {
 
 export function loadModels(filePath: string): Model[] {
   const rawData = fs.readFileSync(filePath, "utf8");
-  let models: unknown;
-
-  models = JSON.parse(rawData);
+  const models = JSON.parse(rawData);
 
   if (!Array.isArray(models)) {
     throw new Error("Expected an array of models.");
@@ -27,8 +25,5 @@ export function loadModels(filePath: string): Model[] {
     }
   });
 
-  return models.map((model) => ({
-    id: (model as any).id,
-    price: new anchor.BN((model as any).price),
-  }));
+  return models.map((m) => ({ id: m.id, price: new anchor.BN(m.price) }));
 }

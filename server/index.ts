@@ -81,7 +81,9 @@ cli.command("start").action(async () => {
   console.log(`Creating new server with models:`);
   models.forEach((x) => console.log(x));
 
-  await chainference.methods.addServer(models).rpc();
+  const transaction = await chainference.methods.addServer(models).rpc();
+
+  await helpers.waitForConfirmation([transaction]);
 
   const servers2 = await chainference.account.serverAccount.all([
     {
@@ -96,7 +98,11 @@ cli.command("start").action(async () => {
     throw new Error(`Unexpected server account count: ${servers2.length}`);
   }
 
-  console.log(`Created server with public key ${servers2[0]!.publicKey}`);
+  const server = servers2[0]!;
+
+  console.log(`Created server with public key ${server.publicKey}`);
+
+  helpers.closeServerOnExit(server.publicKey, chainference);
 
   console.log(`Listening for inference requests...`);
 
