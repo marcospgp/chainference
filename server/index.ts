@@ -1,6 +1,6 @@
 import * as helpers from "./helpers";
 import { Command } from "commander";
-import loadChainference from "./chainference";
+import { loadChainference } from "./chainference";
 import path from "path";
 import { loadModels } from "./models";
 
@@ -12,7 +12,11 @@ cli.command("start").action(async () => {
   const options = cli.opts();
   const isProd = options["prod"] || false;
 
-  console.log(`Running in ${isProd ? "production" : "development"} mode.`);
+  console.log(
+    `Starting chainference server (${
+      isProd ? "production (/!\\)" : "development"
+    } mode)...`
+  );
   const wallet = helpers.loadOrCreateWallet();
 
   const chainference = await loadChainference(wallet, isProd);
@@ -41,24 +45,61 @@ cli.command("start").action(async () => {
     },
   ]);
 
-  console.log(
-    `Found ${servers.length} server${
-      servers.length === 1 ? "" : "s"
-    } registered with current wallet${servers.length === 0 ? "." : ":"}`
-  );
+  let serversLog = `Found ${servers.length} server${
+    servers.length === 1 ? "" : "s"
+  } registered with current wallet`;
 
-  servers.forEach((x) => console.log(x));
+  if (servers.length === 0) {
+    serversLog += ".";
+  } else {
+    serversLog += `: ${servers.map((s) => s.publicKey).join(", ")}.`;
+  }
+
+  console.log(serversLog);
+
+  if (servers.length > 0) {
+    console.log(`Closing existing server${servers.length === 1 ? "" : "s"}...`);
+
+    const transactions = await Promise.all(
+      servers.map((s) =>
+        chainference.methods
+          .closeServer()
+          .accounts({
+            serverAccount: s.publicKey,
+          })
+          .rpc()
+      )
+    );
+
+    await Promise.all(
+      transactions.map((t) => helpers.waitForConfirmation([t]))
+    );
+  }
 
   const models = loadModels(path.join(__dirname, "models.json"));
 
-  if (servers.length === 0) {
-    console.log(`Creating new server with models:`);
-    models.forEach((x) => console.log(x));
+  console.log(`Creating new server with models:`);
+  models.forEach((x) => console.log(x));
 
-    await chainference.methods.addServer(models).rpc();
+  await chainference.methods.addServer(models).rpc();
+
+  const servers2 = await chainference.account.serverAccount.all([
+    {
+      memcmp: {
+        offset: 8,
+        bytes: wallet.publicKey.toBase58(),
+      },
+    },
+  ]);
+
+  if (servers2.length !== 1) {
+    throw new Error(`Unexpected server account count: ${servers2.length}`);
   }
 
-  // Listen for inference requests
+  console.log(`Created server with public key ${servers2[0]!.publicKey}`);
+
+  console.log(`Listening for inference requests...`);
+
   chainference.provider.connection.onProgramAccountChange(
     chainference.programId,
     async (account) => {

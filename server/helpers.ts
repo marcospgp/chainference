@@ -74,3 +74,21 @@ export async function airdropSolIfBalanceBelow(
     `New wallet balance: ${await getBalanceSol(publicKey, connection)} SOL`
   );
 }
+
+export async function waitForConfirmation(transactions: string[]) {
+  const connection = anchor.getProvider().connection;
+  const latestBlockhash = await connection.getLatestBlockhash();
+
+  await Promise.all(
+    transactions.map((t) =>
+      connection.confirmTransaction(
+        {
+          signature: t,
+          blockhash: latestBlockhash.blockhash,
+          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+        },
+        "confirmed"
+      )
+    )
+  );
+}

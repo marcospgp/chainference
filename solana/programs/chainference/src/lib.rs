@@ -171,7 +171,9 @@ pub struct CloseServerCtx<'info> {
     #[account(
         mut,
         close = owner,
-        has_one = owner
+        has_one = owner,
+        seeds = [b"server", owner.key().as_ref()], // Same as in AddServerCtx.
+        bump
     )]
     pub server_account: Account<'info, ServerAccount>,
     #[account(mut)]

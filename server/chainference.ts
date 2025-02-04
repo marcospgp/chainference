@@ -2,7 +2,7 @@ import type { Chainference } from "../solana/target/types/chainference";
 import idl from "../solana/target/idl/chainference.json";
 import * as anchor from "@coral-xyz/anchor";
 
-export default async function loadChainference(
+export async function loadChainference(
   wallet: anchor.web3.Keypair,
   isProd: boolean
 ) {

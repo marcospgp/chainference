@@ -132,7 +132,7 @@ describe("Chainference", function () {
 
     await program.methods
       .closeServer()
-      .accountsStrict({
+      .accounts({
         serverAccount: server!.publicKey,
         owner: serverOwnerKeypair.publicKey,
       })
