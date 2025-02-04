@@ -1,14 +1,15 @@
-import * as anchor from "@coral-xyz/anchor";
 import * as helpers from "./helpers";
 import { Command } from "commander";
 import loadChainference from "./chainference";
+import path from "path";
+import { loadModels } from "./models";
 
-const program = new Command();
+const cli = new Command();
 
-program.action(program.help).option("--prod", "Run against Solana mainnet.");
+cli.action(cli.help).option("--prod", "Run against Solana mainnet.");
 
-program.command("start").action(async () => {
-  const options = program.opts();
+cli.command("start").action(async () => {
+  const options = cli.opts();
   const isProd = options["prod"] || false;
 
   console.log(`Running in ${isProd ? "production" : "development"} mode.`);
@@ -48,13 +49,7 @@ program.command("start").action(async () => {
 
   servers.forEach((x) => console.log(x));
 
-  // TODO: these should be specified in config file I think.
-  const models = [
-    {
-      id: "mlx-community/Llama-3.2-3B-Instruct-4bit",
-      price: new anchor.BN(400000),
-    },
-  ];
+  const models = loadModels(path.join(__dirname, "models.json"));
 
   if (servers.length === 0) {
     console.log(`Creating new server with models:`);
@@ -62,6 +57,21 @@ program.command("start").action(async () => {
 
     await chainference.methods.addServer(models).rpc();
   }
+
+  // Listen for inference requests
+  chainference.provider.connection.onProgramAccountChange(
+    chainference.programId,
+    async (account) => {
+      const decoded = chainference.coder.accounts.decode(
+        // @ts-expect-error
+        chainference.account.inferenceRequestAccount._idlAccount,
+        account.accountInfo.data
+      );
+
+      console.log("Incoming inference request:");
+      console.log(decoded);
+    }
+  );
 });
 
-program.parse();
+cli.parse();
