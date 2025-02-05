@@ -110,7 +110,7 @@ cli.command("start").action(async () => {
     chainference.programId,
     async (account) => {
       const decoded = chainference.coder.accounts.decode(
-        // @ts-expect-error
+        // @ts-expect-error: we have to access a private field here.
         chainference.account.inferenceRequestAccount._idlAccount,
         account.accountInfo.data
       );
