@@ -61,6 +61,18 @@ describe("Chainference", function () {
     // Make sure default wallet doesn't have too many SOL to avoid floating point inaccuracies.
     // See https://github.com/coral-xyz/anchor/issues/3524
     await adjustBalance((provider.wallet as anchor.Wallet).payer, 1e9);
+
+    // Fund server owner wallet.
+    const latestBlockhash = await provider.connection.getLatestBlockhash();
+    const sig = await provider.connection.requestAirdrop(
+      serverOwnerKeypair.publicKey,
+      2 * anchor.web3.LAMPORTS_PER_SOL
+    );
+    await provider.connection.confirmTransaction({
+      signature: sig,
+      blockhash: latestBlockhash.blockhash,
+      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+    });
   });
 
   it("adds a server listing", async () => {
