@@ -1,16 +1,28 @@
-import React, { useState, useRef, useEffect, useReducer } from 'react';
-import { Badge, Flex, ScrollArea, Text, Textarea, Loader } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
-import { useAnchorWallet } from '@solana/wallet-adapter-react';
+import React, { useState, useRef, useEffect, useReducer } from "react";
+import { Badge, Flex, ScrollArea, Text, Textarea, Loader } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
+import { useAnchorWallet } from "@solana/wallet-adapter-react";
 
-import { IoSendSharp, IoSettingsSharp } from 'react-icons/io5';
+import { IoSendSharp, IoSettingsSharp, IoClose } from "react-icons/io5";
 
-import './Chat.css';
-import SettingsModal from './SettingsModal/SettingsModal';
-import type { Program } from '@coral-xyz/anchor';
-import type { Chainference } from '../../../../solana/target/types/chainference';
-import { createInferenceRequest } from '../../utils/chainferenceProgram';
-import useSolanaProgramListener from '../../hooks/useSolanaProgramListener';
+import "./Chat.css";
+import SettingsModal from "./SettingsModal/SettingsModal";
+import type { BN, Program } from "@coral-xyz/anchor";
+import type { Chainference } from "../../../../solana/target/types/chainference";
+import {
+  cancelInferenceRequest,
+  createInferenceRequest,
+} from "../../utils/chainferenceProgram";
+import useSolanaProgramListener from "../../hooks/useSolanaProgramListener";
+import type {
+  ModelListing,
+  DecodedAccount,
+} from "../../utils/chainferenceProgram";
+
+export type Model = {
+  id: string;
+  price: BN;
+};
 
 interface ChatMessage {
   id: string;
@@ -21,29 +33,28 @@ interface ChatMessage {
 
 const reducer = (state: any, action: any) => {
   switch (action.type) {
-    case 'SET_MODEL':
+    case "SET_MODEL":
       return { ...state, model: action.payload };
-    case 'SET_MAX_COST':
+    case "SET_MAX_COST":
       return { ...state, maxCost: action.payload };
     default:
       return state;
   }
 };
 
+type ServerAccount = Extract<DecodedAccount, { type: "serverAccount" }>;
+
 export default function Chat({ program }: { program: Program<Chainference> }) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [opened, { open, close }] = useDisclosure();
-  const [input, setInput] = useState('');
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
 
-  const programState = useSolanaProgramListener(
-    program.programId,
-    program.provider.connection
-  );
+  const programState = useSolanaProgramListener(program);
 
   const initialState = {
-    model: '',
+    model: "",
     maxCost: 0,
   };
 
@@ -51,12 +62,15 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
   const wallet = useAnchorWallet();
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
-    if (programState) {
+    console.log("Program state", programState);
+    if (!programState.find((p) => p.type === "inferenceRequestAccount")) {
       setLoading(false);
+    } else {
+      setLoading(true);
     }
   }, [programState]);
 
@@ -101,12 +115,13 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
   // };
 
   const handleSend = () => {
-    if (!input.trim()) return;
+    const inputValue = inputRef.current?.value.trim();
+    if (!inputValue) return;
     setLoading(true);
 
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
-      text: input,
+      text: inputValue,
       isResponse: false,
     };
 
@@ -120,7 +135,9 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
     } else {
       setChatMessages([...chatMessages, newMessage]);
     }
-    setInput('');
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
 
     // Simulate a response after a short delay
     // setTimeout(() => {
@@ -130,10 +147,22 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
     // }, 1000);
   };
 
-  const numOfServers = 2; // Replace with actual number of servers
-  const priceInUSD = 2; // Replace with actual price
-  const priceInSOL = 0.001; // Replace with actual price
-  const random = React.useRef(Math.random() * 200).current;
+  const numOfServers = programState.filter(
+    (p) => p.type === "serverAccount"
+  ).length; // Replace with actual number of servers
+
+  const availableModels: Set<Model> = React.useMemo(
+    () =>
+      programState
+        .filter((p): p is ServerAccount => p.type === "serverAccount")
+        .reduce((acc, curr) => {
+          curr.data.models.forEach((model: ModelListing) => {
+            acc.add({ id: model.id, price: model.price });
+          });
+          return acc;
+        }, new Set<Model>()),
+    [programState]
+  );
 
   return (
     <>
@@ -142,109 +171,115 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
         onClose={close}
         state={state}
         dispatch={dispatch}
+        availableModels={availableModels}
+        numOfServers={numOfServers}
       />
       <div
         className={`prompt ${
-          chatMessages.length > 0 ? 'has-messages' : 'empty'
+          chatMessages.length > 0 ? "has-messages" : "empty"
         }`}
       >
         {chatMessages.length === 0 ? (
           <div>
-            <h1 className='prompt-title'>Prompt the blockchain</h1>
-            <div className='prompt-box'>
-              <div className='prompt-input'>
+            <h1 className="prompt-title">Prompt the blockchain</h1>
+            <div className="prompt-box">
+              <div className="prompt-input">
                 <Textarea
-                  disabled={!wallet}
-                  variant='unstyled'
-                  placeholder='Why is the sky blue?'
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  disabled={!wallet || !state.model || numOfServers === 0}
+                  variant="unstyled"
+                  placeholder="Why is the sky blue?"
+                  ref={inputRef}
                   error={
-                    (state?.maxCost === 0 || state?.model === '') &&
-                    'Please select a model and max cost'
+                    (state?.maxCost === 0 || state?.model === "") &&
+                    "Please select a model and max cost"
                   }
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       handleSend();
                     }
                   }}
                 />
-                <IoSendSharp className='send-icon' onClick={handleSend} />
+                <IoSendSharp className="send-icon" onClick={handleSend} />
               </div>
-              <div className='prompt-info'>
-                <IoSettingsSharp className='settings-icon' onClick={open} />
-                <Badge size='lg'>
+              <div className="prompt-info">
+                <IoSettingsSharp className="settings-icon" onClick={open} />
+                <Badge size="lg">
                   {`${
                     numOfServers > 0 ? `🟢 ` : `🔴 `
-                  }${numOfServers} / ${Math.floor(random)} servers matched`}
+                  }${numOfServers} / ${numOfServers} servers matched`}
                 </Badge>
                 <Flex
                   flex={1}
-                  justify='start'
-                  align='center'
-                  style={{ alignSelf: 'flex-end' }}
+                  justify="start"
+                  align="center"
+                  style={{ alignSelf: "flex-end" }}
                 >
-                  <Text size='xs'>{`Max price: SOL ${state.maxCost}`}</Text>
+                  <Text size="xs">{`Max price: SOL ${state.maxCost}`}</Text>
                 </Flex>
               </div>
             </div>
           </div>
         ) : (
           <>
-            <ScrollArea className='messages-container'>
+            <ScrollArea className="messages-container">
               {chatMessages.map((message) => (
                 <Flex
                   flex={1}
                   key={message.id}
-                  mb={'xl'}
-                  justify={message.isResponse ? 'start' : 'end'}
+                  mb={"xl"}
+                  justify={message.isResponse ? "start" : "end"}
                 >
-                  <div className='message'>{message.text}</div>
+                  <div className="message">{message.text}</div>
                 </Flex>
               ))}
               <div ref={messagesEndRef} />
             </ScrollArea>
-            <div className='prompt-box'>
-              <div className='prompt-input'>
+            <div className="prompt-box">
+              <div className="prompt-input">
                 <Textarea
-                  variant='unstyled'
+                  variant="unstyled"
                   style={{ flex: 1 }}
                   disabled={loading}
-                  placeholder='Continue the conversation...'
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Continue the conversation..."
+                  ref={inputRef}
                   error={
-                    (state?.maxCost === 0 || state?.model === '') &&
-                    'Please set a model and max cost'
+                    (state?.maxCost === 0 || state?.model === "") &&
+                    "Please set a model and max cost"
                   }
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       handleSend();
                     }
                   }}
                 />
                 {loading ? (
-                  <Loader className='loader' />
+                  <div
+                    className="loader-container"
+                    onClick={() => cancelInferenceRequest(program)}
+                  >
+                    <Loader className="loader" />
+                    <IoClose className="cancel-icon" />
+                  </div>
                 ) : (
-                  <IoSendSharp className='send-icon' onClick={handleSend} />
+                  <IoSendSharp className="send-icon" onClick={handleSend} />
                 )}
               </div>
-              <div className='prompt-info'>
-                <IoSettingsSharp className='settings-icon' onClick={open} />
-                <Badge size='lg'>
+              <div className="prompt-info">
+                <IoSettingsSharp className="settings-icon" onClick={open} />
+                <Badge size="lg">
                   {`${
                     numOfServers > 0 ? `🟢 ` : `🔴 `
-                  }${numOfServers} / ${Math.floor(random)} servers matched`}
+                  }${numOfServers} / ${numOfServers} servers matched`}
                 </Badge>
                 <Flex
                   flex={1}
-                  justify='start'
-                  align='center'
-                  style={{ alignSelf: 'flex-end' }}
+                  justify="start"
+                  align="center"
+                  style={{ alignSelf: "flex-end" }}
                 >
-                  <Text size='xs'>{`Max price: SOL ${state.maxCost}`}</Text>
+                  <Text size="xs">{`Max price: SOL ${state.maxCost}`}</Text>
                 </Flex>
               </div>
             </div>

@@ -298,7 +298,27 @@
   }
 }
 
-.loader {
+.loader-container {
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   align-self: center;
-  margin-right: var(--space-xs);
+}
+
+.loader-container .cancel-icon {
+  position: absolute;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  color: var(--color-primary);
+  font-size: var(--font-xl);
+}
+
+.loader-container:hover .loader {
+  opacity: 0;
+}
+
+.loader-container:hover .cancel-icon {
+  opacity: 1;
 }
