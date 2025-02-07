@@ -80,7 +80,7 @@ write_files:
       systemctl enable --now unattended-upgrades
 
       printf "\n\n ========> Fail2ban \n\n"
-      apt install fail2ban
+      apt install -y fail2ban
       systemctl enable fail2ban
       systemctl start fail2ban
 
