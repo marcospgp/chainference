@@ -98,6 +98,9 @@ write_files:
       apt install -y docker.io docker-compose
       systemctl enable --now docker
 
+      printf "\n\n ========> Disable root user \n\n"
+      passwd -l root
+
       printf "\n\n ========> setup script ran successfully \n\n"
 
 runcmd:

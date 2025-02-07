@@ -1,6 +1,9 @@
 const staticDir = "./build";
 
+const port = process.env["PORT"] || 3000;
+
 const server = Bun.serve({
+  port,
   fetch: (req) => {
     const url = new URL(req.url);
     const path = `${staticDir}${

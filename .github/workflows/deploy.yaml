@@ -1,0 +1,34 @@
+name: Deploy to VPS
+on:
+  push:
+    branches:
+      - main
+env:
+  VPS_HOST: "5.161.78.151"
+  VPS_USER: "github"
+  PROJECT_PATH: "/srv/chainference"
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup SSH and Deploy
+        run: |
+          ssh -i <(echo "${{ secrets.SSH_KEY }}") -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_HOST} << 'EOF'
+          set -euxo pipefail
+          if [ ! -d "${PROJECT_PATH}" ]; then
+            echo "Project directory does not exist. Initial setup..."
+            sudo mkdir -p "${PROJECT_PATH}"
+            sudo chown -R ${VPS_USER}:${VPS_USER} "${PROJECT_PATH}"
+            git clone --depth=1 git@github.com:marcospgp/chainference.git "${PROJECT_PATH}"
+            cd "${PROJECT_PATH}"
+          else
+            echo "Project directory exists. Updating..."
+            cd "${PROJECT_PATH}"
+            git fetch --depth=1
+            git reset --hard origin/main
+          fi
+          docker compose pull
+          docker compose up -d --build
+          EOF

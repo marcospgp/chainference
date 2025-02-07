@@ -1,0 +1,12 @@
+FROM ubuntu:22.04
+
+RUN apt-get update && apt-get install -y curl git build-essential
+
+RUN curl -fsSL https://bun.sh/install | bash
+
+WORKDIR /app
+COPY . .
+
+RUN bun install
+
+CMD ["bun", "run", "prod"]
