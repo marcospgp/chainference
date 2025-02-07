@@ -16,8 +16,8 @@ ssh_keys:
     paste private SSH key here!
 
 timezone: UTC
-ssh_pwauth: false # Disable SSH password auth.
-disable_root: true # Disable root login over SSH.
+ssh_pwauth: false
+disable_root: true
 
 users:
   - name: bernardo
@@ -67,7 +67,6 @@ write_files:
       apt dist-upgrade -y
 
       printf "\n\n ========> unattended-upgrades \n\n"
-
       apt install -y unattended-upgrades
 
       cat <<EOF > /etc/apt/apt.conf.d/20auto-upgrades
@@ -95,7 +94,7 @@ write_files:
       ufw --force enable
 
       printf "\n\n ========> Docker \n\n"
-      apt install -y docker.io docker-compose
+      apt install -y docker.io docker-compose-plugin
       systemctl enable --now docker
 
       printf "\n\n ========> Disable root user \n\n"
