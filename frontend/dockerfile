@@ -3,8 +3,7 @@ FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y curl git build-essential unzip
 
 RUN curl -fsSL https://bun.sh/install | bash && \
-    export BUN_INSTALL="$HOME/.bun" && \
-    export PATH="$BUN_INSTALL/bin:$PATH"
+    export PATH="$HOME/.bun/bin:$PATH"
 
 WORKDIR /app
 COPY . .
