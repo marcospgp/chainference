@@ -3,12 +3,11 @@ FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y curl git build-essential unzip
 
 RUN curl -fsSL https://bun.sh/install | bash && \
-    echo 'export PATH="/root/.bun/bin:$PATH"' >> /etc/environment
+    echo 'export PATH="/root/.bun/bin:$PATH"' >> /root/.bashrc
 
 WORKDIR /app
 COPY . .
 
 RUN /root/.bun/bin/bun install
 
-SHELL ["/bin/bash", "-c"]
-CMD ["bun", "run", "prod"]
+CMD ["/root/.bun/bin/bun", "run", "prod"]
