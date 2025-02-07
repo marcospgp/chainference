@@ -1,13 +1,11 @@
 version: "3.8"
 
 services:
-  # The frontend app depends on files in the parent folder (such as the anchor program IDL), so we
-  # must include it in the container.
-  frontend:
+  app:
     image: chainference-frontend
-    build:
-      context: ../ # Set build context to the parent folder
-      dockerfile: frontend/Dockerfile # Specify the Dockerfile inside frontend
-    volumes:
-      - ../:/app # Mount the parent directory in the container
-    working_dir: /app/frontend # Set working directory inside container
+    build: .
+    environment:
+      - PORT=3222
+    ports:
+      - "80:3222"
+    restart: always

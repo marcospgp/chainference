@@ -6,7 +6,12 @@ RUN curl -fsSL https://bun.sh/install | bash && \
     echo 'export PATH="/root/.bun/bin:$PATH"' >> /root/.bashrc
 
 WORKDIR /app
-COPY . .
+
+# The frontend app depends on files in the parent folder (such as the anchor program IDL), so we
+# must include it in the container.
+COPY ../ /app
+
+WORKDIR /app/frontend
 
 RUN /root/.bun/bin/bun install
 
