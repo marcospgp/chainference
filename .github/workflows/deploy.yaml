@@ -15,7 +15,10 @@ jobs:
 
       - name: Setup SSH and Deploy
         run: |
-          ssh -i <(echo "${{ secrets.SSH_KEY }}") -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_HOST} << 'EOF'
+          temp_key=$(mktemp)
+          echo "${{ secrets.SSH_KEY }}" > "$temp_key"
+          chmod 600 "$temp_key"
+          ssh -i "$temp_key" -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_HOST} << 'EOF'
           set -euxo pipefail
           if [ ! -d "${PROJECT_PATH}" ]; then
             echo "Project directory does not exist. Initial setup..."
@@ -32,3 +35,4 @@ jobs:
           docker compose pull
           docker compose up -d --build
           EOF
+          rm "$temp_key"
