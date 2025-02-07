@@ -15,7 +15,7 @@ Bun CLI for running a Chainference server.
 
 Run with `bun index.ts`.
 
-## Running a server locally
+## Exposing a local server to the internet
 
 You can expose a local server to the internet through [Cloudflare tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/).
 

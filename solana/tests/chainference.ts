@@ -68,7 +68,6 @@ describe("Chainference", function () {
       serverOwnerKeypair.publicKey,
       2 * anchor.web3.LAMPORTS_PER_SOL
     );
-
     await provider.connection.confirmTransaction({
       signature: sig,
       blockhash: latestBlockhash.blockhash,
