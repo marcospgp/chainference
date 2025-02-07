@@ -1,0 +1,192 @@
+## template: jinja
+#cloud-config
+
+# cloud-init file used to initialize VPS.
+# See documentation: https://cloudinit.readthedocs.io/en/latest/reference/modules.html
+#
+# How to use:
+# 1. Set global variables below (jinja2 syntax);
+# 2. Paste this file in the web UI when creating a VPS.
+#
+# Make sure to point any domains to the VPS IP using the correct DNS records.
+#
+# Execution logs are available at `/var/log/cloud-init-output.log`, with
+# additional logging available in `/var/log/cloud-init.log`.
+#
+# Check that execution was successful by running:
+# `grep "setup script ran successfully" /var/log/cloud-init-output.log`.
+#
+# Files should be written to /run/ instead of /tmp/ as per
+# https://cloudinit.readthedocs.io/en/latest/reference/modules.html#runcmd
+
+
+{# Domain. #}
+{% set domain = "chainference.app" %}
+
+{# An SSH private key that is authorized to read the github repo. #}
+{% set private_ssh_key =
+'
+' %}
+
+ssh_pwauth: false # Disable SSH password auth.
+disable_root: true # Disable root login over SSH.
+timezone: UTC
+
+users:
+  - name: bernardo
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: sudo
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBesw1jrqTa2CepHsk35RX1wZeT5CCM1hBgbS8KDLS9D bfar97@gmail.com"
+  - name: marcos
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: sudo
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGJ2vrIhoGkV+8kath2C3utUJ8zymmascDMWpLQs1Yrr email@marcospereira.me"
+
+# Specify which types of SSH key to generate (by default, all supported types are generated).
+# ECDSA is required for the digital ocean web terminal.
+ssh_genkeytypes: []
+
+write_files:
+  # Harden network security.
+  - path: /etc/sysctl.d/99-cloud-hardening.conf
+    content: |
+      net.ipv4.ip_forward = 0
+      net.ipv4.conf.all.accept_redirects = 0
+      net.ipv4.conf.all.secure_redirects = 0
+      net.ipv4.conf.all.send_redirects = 0
+    owner: root:root
+    permissions: '0644'
+
+  - path: /etc/nginx/sites-enabled/chainference
+    # Port is set to 80 so that certbot will configure NGINX to redirect HTTP to HTTPS when running
+    # `certbot --nginx`.
+    content: |
+      server {
+        listen 80;
+        server_name {{ domain }};
+
+        location /api {
+          proxy_pass http://localhost:5000;
+
+          # https://flask.palletsprojects.com/en/2.2.x/deploying/nginx/
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-Prefix /;
+        }
+      }
+
+  # Write SSH key for git access.
+  # Multiline variables indented by 6 spaces to avoid breaking yaml syntax.
+  - path: /root/.ssh/id_ed25519
+    # Only readable by owner, required by git.
+    permissions: "0600"
+    content: |
+      {{ private_ssh_key | indent(6) }}
+
+  # Write commands into a bash script so that we can run them with bash
+  # explicitly ("runcmd" commands may use a different shell).
+  - path: /run/vps-setup.sh
+    permissions: "0700" # Executable
+    content: |
+      #!/bin/bash
+
+      set -euxo pipefail
+
+      printf "\n\n ========> Update packages \n\n"
+      apt update -y
+      # Same as apt upgrade but will add & remove packages as appropriate.
+      apt dist-upgrade -y
+
+      printf "\n\n ========> unattended-upgrades \n\n"
+
+      apt install -y unattended-upgrades
+
+      cat <<EOF > /etc/apt/apt.conf.d/20auto-upgrades
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      EOF
+
+      cat <<EOF > /etc/apt/apt.conf.d/50unattended-upgrades
+      Unattended-Upgrade::Allowed-Origins {
+        "\${distro_id}:\${distro_codename}-security";
+        "\${distro_id}:\${distro_codename}-updates";
+      };
+      Unattended-Upgrade::Automatic-Reboot "true";
+      EOF
+
+      systemctl enable --now unattended-upgrades
+
+      printf "\n\n ========> Fail2ban \n\n"
+      apt install fail2ban
+      systemctl enable fail2ban
+      systemctl start fail2ban
+
+      printf "\n\n ========> NGINX \n\n"
+      apt install -y nginx
+      unlink /etc/nginx/sites-enabled/default # Disable default config
+      nginx -s reload
+
+      printf "\n\n ========> Firewall \n\n"
+      ufw allow OpenSSH
+      ufw allow "Nginx HTTPS"
+      ufw --force enable
+
+      printf "\n\n ========> Repo setup \n\n"
+      ssh-keyscan github.com >> /root/.ssh/known_hosts
+      git clone --depth 1 git@github.com:marcospgp/chainference.git /opt/chainference
+      cd /opt/chainference
+      # Install bun
+      curl -fsSL https://bun.sh/install | bash
+      cd frontend
+      bun install
+
+      # Create a systemd service file so that we can launch the app on OS boot automatically.
+      cat <<EOF > /etc/systemd/system/chainference.service
+      [Unit]
+      Description=Chainference App
+      After=network.target
+
+      [Service]
+      ExecStart=bun run prod
+      WorkingDirectory=/opt/chainference/frontend
+      Restart=always
+      User=root
+
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+
+      # Reload systemd.
+      systemctl daemon-reload
+      systemctl enable chainference.service
+      systemctl start chainference.service
+
+      # HTTPS
+      # https://certbot.eff.org/instructions?ws=nginx&os=ubuntufocal
+      #
+      # HTTPS is set up last to avoid hitting rate limits for certificate generation when running
+      # this script multiple times while debugging.
+      # This also allows more time to assign a reserved IP in platforms like Digital Ocean where
+      # that can only be done after creating the VPS.
+      printf "\n\n ========> HTTPS (certbot) \n\n"
+
+      snap install core
+      snap refresh core
+      snap install --classic certbot
+
+      # https://eff-certbot.readthedocs.io/en/stable/using.html#certbot-command-line-options
+      certbot -n --nginx --agree-tos -d {{domain}}  -m {{email}} --redirect
+
+      # Ensure certbot renewal works.
+      certbot renew --dry-run
+
+      printf "\n\n ========> setup script ran successfully \n\n"
+
+runcmd:
+  - "bash /run/vps-setup.sh"
+  - "rm /run/vps-setup.sh"

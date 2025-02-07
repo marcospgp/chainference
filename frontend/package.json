@@ -3,9 +3,10 @@
   "module": "server.ts",
   "type": "module",
   "scripts": {
-    "dev": "NODE_ENV=development bun run build --watch & bun run start --watch",
     "start": "bun run server.ts",
-    "build": "bun build src/index.html --outdir build --asset-naming \"[name].[ext]\" --chunk-naming \"[name].[ext]\""
+    "build": "bun build src/index.html --outdir build --asset-naming \"[name].[ext]\" --chunk-naming \"[name].[ext]\"",
+    "dev": "NODE_ENV=development bun run build --watch & bun run start --watch",
+    "prod": "NODE_ENV=production bun run build && bun run start"
   },
   "devDependencies": {
     "@mantine/core": "^7.16.1",
