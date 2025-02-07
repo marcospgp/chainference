@@ -6,5 +6,5 @@ services:
     environment:
       - PORT=3222
     ports:
-      - "80:${PORT}"
+      - "80:3222"
     restart: always
