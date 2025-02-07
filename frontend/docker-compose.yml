@@ -3,7 +3,11 @@ version: "3.8"
 services:
   app:
     image: chainference-frontend
-    build: .
+    build:
+      # We add the parent folder to build context because the frontend app depends on it (such as
+      # for the anchor program IDL).
+      context: ../
+      dockerfile: frontend/Dockerfile
     environment:
       - PORT=3222
     ports:

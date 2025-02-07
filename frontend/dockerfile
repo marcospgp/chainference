@@ -7,10 +7,10 @@ RUN curl -fsSL https://bun.sh/install | bash && \
 
 WORKDIR /app
 
-# The frontend app depends on files in the parent folder (such as the anchor program IDL), so we
-# must include it in the container.
-COPY ../ /app
+COPY . /app
 
+# This dockerfile is meant to be built in the context of the parent folder, so now we get back in
+# the current folder.
 WORKDIR /app/frontend
 
 RUN /root/.bun/bin/bun install
