@@ -12,6 +12,13 @@ The browser client which allows users to prompt models on the chain.
 
 `NODE_ENV` is set to `development` while developing as React's strict mode relies on it.
 
+## Deploying
+
+We deploy automatically to a VPS when pushing to the main branch.
+
+`dockerfile` and `docker-compose.yml` are used for the deployment - the frontend app runs in a
+container in the VPS.
+
 ## Styling
 
 We use [Mantine](https://mantine.dev/) as a UI library.
