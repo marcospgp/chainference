@@ -17,24 +17,25 @@ jobs:
           temp_key=$(mktemp)
           echo "${{ secrets.SSH_KEY }}" > "$temp_key"
           chmod 600 "$temp_key"
+
           ssh -i "$temp_key" -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_HOST} << EOF
           set -euxo pipefail
 
-          # If the project folder doesn't yet exist, assume we're deploying for the first time and
-          # set things up.
-          if [ ! -d "${PROJECT_PATH}" ]; then
-            echo "Project directory does not exist. Initial setup..."
+          # Check if the project folder is a valid git repo
+          if [ ! -d "${PROJECT_PATH}/.git" ]; then
+            echo "Project directory is missing or not a git repository. Performing initial setup..."
+            sudo rm -rf "${PROJECT_PATH}"
             sudo mkdir -p "${PROJECT_PATH}"
             sudo chown -R ${VPS_USER}:${VPS_USER} "${PROJECT_PATH}"
-            git clone --depth=1 git@github.com:marcospgp/chainference.git "${PROJECT_PATH}"
+            sudo -u github git clone --depth=1 git@github.com:marcospgp/chainference.git "${PROJECT_PATH}"
             cd "${PROJECT_PATH}"
           else
-            echo "Project directory exists. Updating..."
+            echo "Project directory exists and is a git repository. Updating..."
             cd "${PROJECT_PATH}"
-            git fetch --depth=1
-            git reset --hard origin/main
+            sudo -u github git fetch --depth=1
+            sudo -u github git reset --hard origin/main
           fi
-          docker compose pull
           docker compose up -d --build
           EOF
+
           rm "$temp_key"
