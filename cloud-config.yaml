@@ -11,9 +11,13 @@
 # Check that execution was successful by running:
 # `grep "setup script ran successfully" /var/log/cloud-init-output.log`.
 
-ssh_keys:
-  ed25519_private: |
-    paste private SSH key here!
+write_files:
+  - path: /home/github/.ssh/id_ed25519
+    content: |
+      Paste VPS private SSH key here!
+      The corresponding public key should be given read access to relevant repos.
+    owner: github:github
+    permissions: "0600"
 
 timezone: UTC
 ssh_pwauth: false
