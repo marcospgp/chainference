@@ -22,11 +22,13 @@ jobs:
           ssh -i "$temp_key" -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_HOST} << EOF
           set -euxo pipefail
 
+          sudo chown -R github:github /home/github
+
           # Ensure GitHub's host key is in known_hosts to prevent "host key verification failed"
           # error.
-          sudo mkdir -p ~/.ssh/
-          sudo touch ~/.ssh/known_hosts
-          sudo ssh-keyscan github.com >> ~/.ssh/known_hosts
+          mkdir -p ~/.ssh/
+          touch ~/.ssh/known_hosts
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
 
           # Check if the project folder is a valid git repo
           if [ ! -d "${PROJECT_PATH}/.git" ]; then
