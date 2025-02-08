@@ -8,8 +8,8 @@ services:
       dockerfile: frontend/Dockerfile
     environment:
       - PORT=3222
-    ports:
-      - "80:3222"
+    expose:
+      - "3222"
     restart: always
 
   caddy:
