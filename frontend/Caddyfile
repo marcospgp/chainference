@@ -1,3 +1,14 @@
-chainference.app {
+# Redirect all HTTP requests to HTTPS
+http://chainference.app, http://www.chainference.app {
+    redir https://chainference.app{uri}
+}
+
+# Redirect www to non-www (preferred)
+https://www.chainference.app {
+    redir https://chainference.app{uri}
+}
+
+# Serve app on HTTPS
+https://chainference.app {
     reverse_proxy app:3222
 }
