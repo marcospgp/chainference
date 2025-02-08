@@ -26,7 +26,7 @@ jobs:
           # error.
           sudo mkdir -p /root/.ssh
           sudo chmod 700 /root/.ssh
-          sudo ssh-keyscan github.com >> /root/.ssh/known_hosts
+          sudo sh -c 'ssh-keyscan github.com >> /root/.ssh/known_hosts'
 
           # Check if the project folder is a valid git repo
           if [ ! -d "${PROJECT_PATH}/.git" ]; then
