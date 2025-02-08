@@ -181,7 +181,7 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
       >
         {chatMessages.length === 0 ? (
           <div>
-            <h1 className="prompt-title">Prompt the bernardo chain</h1>
+            <h1 className="prompt-title">Prompt the blockchain</h1>
             <div className="prompt-box">
               <div className="prompt-input">
                 <Textarea
