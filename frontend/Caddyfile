@@ -1,0 +1,3 @@
+chainference.app {
+    reverse_proxy app:3222
+}
