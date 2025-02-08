@@ -22,25 +22,19 @@ jobs:
           ssh -i "$temp_key" -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_HOST} << EOF
           set -euxo pipefail
 
-          # Ensure GitHub's host key is in known_hosts to prevent "host key verification failed"
-          # error.
-          sudo mkdir -p /root/.ssh
-          sudo chmod 700 /root/.ssh
-          sudo sh -c 'ssh-keyscan github.com >> /root/.ssh/known_hosts'
-
           # Check if the project folder is a valid git repo
           if [ ! -d "${PROJECT_PATH}/.git" ]; then
             echo "Project directory is missing or not a git repository. Performing initial setup..."
             sudo rm -rf "${PROJECT_PATH}"
             sudo mkdir -p "${PROJECT_PATH}"
             sudo chown -R ${VPS_USER}:${VPS_USER} "${PROJECT_PATH}"
-            sudo -u github git clone --depth=1 git@github.com:marcospgp/chainference.git "${PROJECT_PATH}"
+            git clone --depth=1 git@github.com:marcospgp/chainference.git "${PROJECT_PATH}"
             cd "${PROJECT_PATH}"
           else
             echo "Project directory exists and is a git repository. Updating..."
             cd "${PROJECT_PATH}"
-            sudo -u github git fetch --depth=1
-            sudo -u github git reset --hard origin/main
+            git fetch --depth=1
+            git reset --hard origin/main
           fi
           cd frontend
           sudo docker compose down

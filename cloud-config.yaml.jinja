@@ -47,7 +47,6 @@ write_files:
     # Multiline variables indented by 6 spaces to avoid breaking yaml syntax.
     content: |
       {{ SSH_KEY | indent(6) }}
-    owner: github:github
     permissions: "0600"
 
   # Write commands into a bash script so that we can run them with bash explicitly ("runcmd"
