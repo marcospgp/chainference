@@ -24,7 +24,8 @@ jobs:
 
           # Ensure GitHub's host key is in known_hosts to prevent "host key verification failed"
           # error.
-          mkdir -p ~/.ssh/ && touch ~/.ssh/known_hosts
+          sudo mkdir -p ~/.ssh/
+          sudo touch ~/.ssh/known_hosts
           sudo -u github ssh-keyscan github.com >> ~/.ssh/known_hosts
 
           # Check if the project folder is a valid git repo
