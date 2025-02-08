@@ -70,6 +70,9 @@ chmod 600 /home/github/.ssh/id_ed25519
 touch /home/github/.ssh/known_hosts
 ssh-keyscan github.com >>/home/github/.ssh/known_hosts
 
+# Ensure correct ownership for everything in .ssh
+chown -R github:github /home/github/.ssh
+
 printf "\n\n ========> Update packages \n\n"
 apt update -y
 # Same as apt upgrade but will add & remove packages as appropriate.
