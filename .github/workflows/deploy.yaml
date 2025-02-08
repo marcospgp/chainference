@@ -24,27 +24,27 @@ jobs:
 
           # Ensure GitHub's host key is in known_hosts to prevent "host key verification failed"
           # error.
-          sudo mkdir -p ~/.ssh/
-          sudo touch ~/.ssh/known_hosts
-          sudo -u github ssh-keyscan github.com >> ~/.ssh/known_hosts
+          mkdir -p ~/.ssh/
+          touch ~/.ssh/known_hosts
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
 
           # Check if the project folder is a valid git repo
           if [ ! -d "${PROJECT_PATH}/.git" ]; then
             echo "Project directory is missing or not a git repository. Performing initial setup..."
-            sudo rm -rf "${PROJECT_PATH}"
-            sudo mkdir -p "${PROJECT_PATH}"
-            sudo chown -R ${VPS_USER}:${VPS_USER} "${PROJECT_PATH}"
-            sudo -u github git clone --depth=1 git@github.com:marcospgp/chainference.git "${PROJECT_PATH}"
+            rm -rf "${PROJECT_PATH}"
+            mkdir -p "${PROJECT_PATH}"
+            chown -R ${VPS_USER}:${VPS_USER} "${PROJECT_PATH}"
+            -u github git clone --depth=1 git@github.com:marcospgp/chainference.git "${PROJECT_PATH}"
             cd "${PROJECT_PATH}"
           else
             echo "Project directory exists and is a git repository. Updating..."
             cd "${PROJECT_PATH}"
-            sudo -u github git fetch --depth=1
-            sudo -u github git reset --hard origin/main
+            -u github git fetch --depth=1
+            -u github git reset --hard origin/main
           fi
           cd frontend
-          sudo docker compose down
-          sudo docker compose up -d --build
+          docker compose down
+          docker compose up -d --build
           EOF
 
           rm "$temp_key"
