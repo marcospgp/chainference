@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch: # Enable manual trigger in web UI.
 env:
   VPS_HOST: "5.161.78.151"
   VPS_USER: "github"
