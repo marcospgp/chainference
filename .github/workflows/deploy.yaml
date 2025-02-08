@@ -22,9 +22,6 @@ jobs:
           ssh -i "$temp_key" -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_HOST} << EOF
           set -euxo pipefail
 
-          # Ensure GitHub's host key is in known_hosts to prevent host verification errors
-          sudo -u github ssh-keyscan github.com >> /home/github/.ssh/known_hosts
-
           # Check if the project folder is a valid git repo
           if [ ! -d "${PROJECT_PATH}/.git" ]; then
             echo "Project directory is missing or not a git repository. Performing initial setup..."
