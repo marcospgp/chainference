@@ -58,31 +58,17 @@ done
 
 printf "\n\n ✅ All users created successfully! \n\n"
 
-printf "\n\n ========> Create github user \n\n"
+printf "\n\n ========> Setup github user \n\n"
 
-# Create the 'github' user if it doesn't exist
-id -u github &>/dev/null || useradd -m -s /bin/bash github
-
-# Ensure 'github' has sudo privileges without password
-echo "github ALL=(ALL) NOPASSWD:ALL" >/etc/sudoers.d/github
-chmod 440 /etc/sudoers.d/github
-
-# Create SSH directory for github
-mkdir -p /home/github/.ssh
-chmod 700 /home/github/.ssh
-
-# Write private SSH key so github user has access to relevant repos.
+# Store private SSH key.
 cat <<EOF >/home/github/.ssh/id_ed25519
 $SSH_KEY
 EOF
 chmod 600 /home/github/.ssh/id_ed25519
 
-# Add GitHub's SSH key so it can SSH in in GitHub Actions.
-echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDR7JRuR3FgsI2RRqtb5mS00jO/emFGS0cyM3M1n6Up2 github" >/home/github/.ssh/authorized_keys
-chmod 600 /home/github/.ssh/authorized_keys
-
-# Ensure proper ownership
-chown -R github:github /home/github/.ssh
+# Add github to allowed hosts.
+touch /home/github/.ssh/known_hosts
+ssh-keyscan github.com >>/home/github/.ssh/known_hosts
 
 printf "\n\n ========> Update packages \n\n"
 apt update -y
