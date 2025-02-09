@@ -8,9 +8,12 @@ set -euo pipefail
 #   3. Copy script into file in VPS, updating variables below
 #   4. Run the script file with the "bash" command.
 
-USERS=(
+SUDO_USERS=(
   "bernardo:ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBesw1jrqTa2CepHsk35RX1wZeT5CCM1hBgbS8KDLS9D bfar97@gmail.com"
   "marcos:ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGJ2vrIhoGkV+8kath2C3utUJ8zymmascDMWpLQs1Yrr email@marcospereira.me"
+)
+
+DOCKER_ONLY_USERS=(
   "github:ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDR7JRuR3FgsI2RRqtb5mS00jO/emFGS0cyM3M1n6Up2 github"
 )
 
@@ -99,7 +102,7 @@ apt install -y fail2ban
 if [ ! -f /etc/fail2ban/jail.local ]; then
   cat <<'EOF' >/etc/fail2ban/jail.local
 [DEFAULT]
-bantime = 10m
+bantime = 1h
 findtime = 10m
 maxretry = 5
 backend = auto
@@ -157,7 +160,7 @@ EOF
   # Add github to allowed hosts.
   touch /home/github/.ssh/known_hosts
   if ! grep -q "github.com" /home/github/.ssh/known_hosts; then
-    ssh-keyscan github.com >>/home/github/.ssh/known_hosts
+    ssh-keyscan -t ed25519 github.com >>/home/github/.ssh/known_hosts
   fi
   chown -R github:github /home/github/.ssh
 fi
@@ -198,7 +201,6 @@ printf "Set up docker"
 printf "\n=================================================================================\n\n"
 
 # Steps copied from https://docs.docker.com/engine/install/ubuntu/ (removed sudo)
-
 if ! command -v docker &>/dev/null; then
   # Add Docker's official GPG key:
   apt-get update
@@ -219,6 +221,14 @@ if ! command -v docker &>/dev/null; then
   systemctl enable --now docker
 fi
 
+# Add users to the docker group
+for user in "${USERS[@]}"; do
+  IFS=":" read -r username user_key <<<"$user"
+  if id "$username" &>/dev/null; then
+    usermod -aG docker "$username"
+  fi
+done
+
 # Avoid arbitrarily large docker logs.
 configure_docker_logs() {
   local CONFIG="/etc/docker/daemon.json"
@@ -230,6 +240,8 @@ configure_docker_logs() {
   if [ ! -s "$CONFIG" ]; then
     echo '{}' >"$CONFIG"
   fi
+
+  apt-get install -y jq
 
   jq -n --argfile existing "$CONFIG" \
     --arg log_driver "json-file" \
