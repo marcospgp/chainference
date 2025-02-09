@@ -2,11 +2,13 @@
 set -euo pipefail
 
 # Script used to initialize VPS.
+# Designed to be idempotent, so it can be run multiple times when iterating.
+#
 # Usage:
-#   1. Create VPS
-#   2. SSH in as root user
-#   3. Copy script into file in VPS, updating variables below
-#   4. Run the script file with the "bash" command.
+#   1. Create VPS.
+#   2. SSH in as root user.
+#   3. Run "nano setup.sh", paste the contents of this file, and save.
+#   4. Run "bash setup.sh".
 
 SUDO_USERS=(
   "bernardo:ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBesw1jrqTa2CepHsk35RX1wZeT5CCM1hBgbS8KDLS9D bfar97@gmail.com"
@@ -124,7 +126,7 @@ printf "\n\n====================================================================
 printf "Create users"
 printf "\n=================================================================================\n\n"
 
-create_user() {
+create_user_if_not_exists() {
   local USERNAME="$1"
   local AUTHORIZED_KEY="$2"
 
@@ -141,14 +143,14 @@ create_user() {
 # Create users with sudo privileges.
 for user in "${SUDO_USERS[@]}"; do
   IFS=":" read -r username user_key <<<"$user"
-  create_user "$username" "$user_key"
+  create_user_if_not_exists "$username" "$user_key"
   echo "$username ALL=(ALL) NOPASSWD:ALL" >"/etc/sudoers.d/$username"
 done
 
 # Create users with docker-only access.
 for user in "${DOCKER_ONLY_USERS[@]}"; do
   IFS=":" read -r username user_key <<<"$user"
-  create_user "$username" "$user_key"
+  create_user_if_not_exists "$username" "$user_key"
 done
 
 printf "All users created successfully.\n"
