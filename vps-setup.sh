@@ -168,14 +168,14 @@ if [ ! -f /home/github/.ssh/id_ed25519 ]; then
 $GITHUB_PRIVATE_KEY
 EOF
   chmod 600 /home/github/.ssh/id_ed25519
-
-  # Add github to allowed hosts.
-  touch /home/github/.ssh/known_hosts
-  if ! grep -q "github.com" /home/github/.ssh/known_hosts; then
-    ssh-keyscan -t ed25519 github.com >>/home/github/.ssh/known_hosts
-  fi
-  chown -R github:github /home/github/.ssh
 fi
+
+# Add github to allowed hosts.
+touch /home/github/.ssh/known_hosts
+if ! grep -q "github.com" /home/github/.ssh/known_hosts; then
+  ssh-keyscan -t ed25519 github.com >>/home/github/.ssh/known_hosts
+fi
+chown -R github:github /home/github/.ssh
 
 # Ensure correct ownership for everything in .ssh
 chown -R github:github /home/github/.ssh
