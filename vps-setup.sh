@@ -14,7 +14,7 @@ USERS=(
   "github:ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDR7JRuR3FgsI2RRqtb5mS00jO/emFGS0cyM3M1n6Up2 github"
 )
 
-SSH_KEY=$(
+GITHUB_PRIVATE_KEY=$(
   cat <<'EOF'
 Paste VPS private SSH key here!
 The corresponding public key should be given read access to relevant repos.
@@ -27,7 +27,6 @@ printf "\n======================================================================
 
 # Update packages
 apt update -y
-# Same as apt upgrade but will add & remove packages as appropriate.
 apt dist-upgrade -y
 
 timedatectl set-timezone UTC
@@ -64,7 +63,11 @@ modify_ssh_config() {
   local value="$2"
   local file="/etc/ssh/sshd_config"
 
-  grep -qE "^#?$param" "$file" && sed -i "s/^#\?$param.*/$param $value/" "$file" || echo "$param $value" >>"$file"
+  if grep -qE "^#?$param" "$file"; then
+    sed -i "s/^#\?$param.*/$param $value/" "$file"
+  else
+    echo "$param $value" >>"$file"
+  fi
 }
 modify_ssh_config "PermitRootLogin" "no"
 modify_ssh_config "PasswordAuthentication" "no"
@@ -78,8 +81,10 @@ passwd --lock root
 add_sysctl() {
   local key="$1"
   local value="$2"
-  if ! grep -q "^$key = $value$" /etc/sysctl.conf; then
-    echo "$key = $value" >>/etc/sysctl.conf
+  local file="/etc/sysctl.conf"
+
+  if ! grep -q "^$key = $value$" "$file"; then
+    echo "$key = $value" >>"$file"
   fi
 }
 add_sysctl "net.ipv4.conf.all.accept_redirects" "0"
@@ -118,12 +123,12 @@ printf "\n======================================================================
 
 create_user() {
   local USERNAME="$1"
-  local SSH_KEY="$2"
+  local AUTHORIZED_KEY="$2"
 
   if ! id "$USERNAME" &>/dev/null; then
     adduser --disabled-password --gecos "" "$USERNAME"
     mkdir -p "/home/$USERNAME/.ssh"
-    echo "$SSH_KEY" >"/home/$USERNAME/.ssh/authorized_keys"
+    echo "$AUTHORIZED_KEY" >"/home/$USERNAME/.ssh/authorized_keys"
     chmod 700 "/home/$USERNAME/.ssh"
     chmod 600 "/home/$USERNAME/.ssh/authorized_keys"
     chown -R "$USERNAME:$USERNAME" "/home/$USERNAME/.ssh"
@@ -132,8 +137,8 @@ create_user() {
 }
 
 for user in "${USERS[@]}"; do
-  IFS=":" read -r username ssh_key <<<"$user"
-  create_user "$username" "$ssh_key"
+  IFS=":" read -r username user_key <<<"$user"
+  create_user "$username" "$user_key"
 done
 
 printf "All users created successfully.\n"
@@ -145,7 +150,7 @@ printf "\n======================================================================
 if [ ! -f /home/github/.ssh/id_ed25519 ]; then
   # Store "github" user's private SSH key.
   cat <<EOF >/home/github/.ssh/id_ed25519
-$SSH_KEY
+$GITHUB_PRIVATE_KEY
 EOF
   chmod 600 /home/github/.ssh/id_ed25519
 
@@ -171,7 +176,11 @@ modify_config() {
   local key="$2"
   local value="$3"
 
-  grep -qE "^$key" "$file" && sed -i "s/^$key.*/$key $value/" "$file" || echo "$key $value" >>"$file"
+  if grep -qE "^$key" "$file"; then
+    sed -i "s/^$key.*/$key $value/" "$file"
+  else
+    echo "$key $value" >>"$file"
+  fi
 }
 
 modify_config "/etc/apt/apt.conf.d/20auto-upgrades" "APT::Periodic::Update-Package-Lists" "\"1\";"
@@ -188,7 +197,7 @@ printf "\n\n====================================================================
 printf "Set up docker"
 printf "\n=================================================================================\n\n"
 
-# Steps copied from https://docs.docker.com/engine/install/ubuntu/ (removed sudo )
+# Steps copied from https://docs.docker.com/engine/install/ubuntu/ (removed sudo)
 
 if ! command -v docker &>/dev/null; then
   # Add Docker's official GPG key:
@@ -217,6 +226,10 @@ configure_docker_logs() {
   local MAX_FILE="1"
 
   touch "$CONFIG"
+  # If CONFIG is empty, initialize it as an empty JSON object
+  if [ ! -s "$CONFIG" ]; then
+    echo '{}' >"$CONFIG"
+  fi
 
   jq -n --argfile existing "$CONFIG" \
     --arg log_driver "json-file" \
