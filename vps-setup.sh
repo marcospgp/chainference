@@ -23,6 +23,7 @@ OTHER_USERS=(
 # The corresponding public key should be given read access to relevant repos.
 PRIVATE_SSH_KEY=$(
   cat <<'EOF'
+a
 EOF
 )
 
@@ -83,6 +84,7 @@ modify_ssh_config() {
 modify_ssh_config "PermitRootLogin" "no"
 modify_ssh_config "PasswordAuthentication" "no"
 modify_ssh_config "PubkeyAuthentication" "yes"
+modify_ssh_config "UsePAM" "no"
 systemctl restart ssh
 
 # Lock root password.
@@ -117,6 +119,7 @@ backend = auto
 
 [sshd]
 enabled = true
+mode = aggressive
 EOF
 cat <<'EOF' >/etc/fail2ban/jail.d/recidive.conf
 [recidive]
@@ -136,6 +139,12 @@ ufw default deny incoming
 ufw default allow outgoing
 ufw allow OpenSSH
 ufw --force enable
+
+# passwd and shadow file ownership.
+sudo chown root:root /etc/passwd
+sudo chmod 644 /etc/passwd
+chown root:shadow /etc/shadow
+chmod 600 /etc/shadow
 
 printf "\n\n=================================================================================\n"
 printf "Create users"
