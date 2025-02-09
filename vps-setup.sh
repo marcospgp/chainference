@@ -19,12 +19,18 @@ DOCKER_ONLY_USERS=(
   "github:ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDR7JRuR3FgsI2RRqtb5mS00jO/emFGS0cyM3M1n6Up2 github"
 )
 
-GITHUB_PRIVATE_KEY=$(
+# Paste VPS private SSH key here! (between the lines containing "EOF")
+# The corresponding public key should be given read access to relevant repos.
+PRIVATE_SSH_KEY=$(
   cat <<'EOF'
-Paste VPS private SSH key here!
-The corresponding public key should be given read access to relevant repos.
 EOF
 )
+
+# Ensure private SSH key is set.
+[ -z "$PRIVATE_SSH_KEY" ] && {
+  echo "PRIVATE_SSH_KEY not set"
+  exit 1
+}
 
 printf "\n\n=================================================================================\n"
 printf "Miscellaneous"
@@ -161,7 +167,7 @@ printf "\n======================================================================
 if [ ! -f /home/github/.ssh/id_ed25519 ]; then
   # Store "github" user's private SSH key.
   cat <<EOF >/home/github/.ssh/id_ed25519
-$GITHUB_PRIVATE_KEY
+$PRIVATE_SSH_KEY
 EOF
   chmod 600 /home/github/.ssh/id_ed25519
 fi
