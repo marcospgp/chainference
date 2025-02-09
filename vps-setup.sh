@@ -21,6 +21,12 @@ The corresponding public key should be given read access to relevant repos.
 EOF
 )
 
+printf "\n\n ========> SSH hardening \n\n"
+
+sed -i 's/^#?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+sed -i 's/^#?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+systemctl restart ssh
+
 printf "\n\n ========> Creating users and setting up SSH keys \n\n"
 
 create_user() {
@@ -87,12 +93,14 @@ APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
 EOF
 
+# Reboot at 12 noon, when america is sleeping.
 cat <<EOF >/etc/apt/apt.conf.d/50unattended-upgrades
 Unattended-Upgrade::Allowed-Origins {
   "\${distro_id}:\${distro_codename}-security";
   "\${distro_id}:\${distro_codename}-updates";
 };
 Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-Time "12:00";
 EOF
 
 systemctl enable --now unattended-upgrades
@@ -106,7 +114,7 @@ printf "\n\n ========> Firewall \n\n"
 ufw allow OpenSSH
 ufw --force enable
 
-printf "\n\n ========> Docker \n\n"
+printf "\n\n ========> Set up Docker \n\n"
 
 # Steps copied from https://docs.docker.com/engine/install/ubuntu/
 # (removed sudo )
