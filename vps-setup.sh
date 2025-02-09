@@ -15,7 +15,7 @@ SUDO_USERS=(
   "marcos:ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGJ2vrIhoGkV+8kath2C3utUJ8zymmascDMWpLQs1Yrr email@marcospereira.me"
 )
 
-DOCKER_ONLY_USERS=(
+OTHER_USERS=(
   "github:ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDR7JRuR3FgsI2RRqtb5mS00jO/emFGS0cyM3M1n6Up2 github"
 )
 
@@ -28,7 +28,7 @@ EOF
 
 # Ensure private SSH key is set.
 [ -z "$PRIVATE_SSH_KEY" ] && {
-  echo "PRIVATE_SSH_KEY not set"
+  echo "Error: \$PRIVATE_SSH_KEY variable not set."
   exit 1
 }
 
@@ -147,7 +147,7 @@ create_user_if_not_exists() {
 }
 
 # Create users.
-for user in "${SUDO_USERS[@]}" "${DOCKER_ONLY_USERS[@]}"; do
+for user in "${SUDO_USERS[@]}" "${OTHER_USERS[@]}"; do
   IFS=":" read -r username user_key <<<"$user"
   create_user_if_not_exists "$username" "$user_key"
 done
@@ -179,14 +179,15 @@ if ! grep -q "github.com" /home/github/.ssh/known_hosts; then
 fi
 chown -R github:github /home/github/.ssh
 
-# Ensure correct ownership for everything in .ssh
-chown -R github:github /home/github/.ssh
-
 # Ensure /srv exists and grant full access to the github user.
 # This is where projects should live.
 mkdir -p /srv
 chown -R github:github /srv
 chmod -R 755 /srv
+
+# Allow github user to run only specific docker commands.
+echo "github ALL=(ALL) NOPASSWD: /usr/bin/docker compose up *, /usr/bin/docker compose down *" >/etc/sudoers.d/github
+chmod 0440 /etc/sudoers.d/github
 
 printf "\n\n=================================================================================\n"
 printf "Unattended upgrades"
@@ -241,8 +242,8 @@ if ! command -v docker &>/dev/null; then
   systemctl enable --now docker
 fi
 
-# Add all users to the docker group.
-for user in "${SUDO_USERS[@]}" "${DOCKER_ONLY_USERS[@]}"; do
+# Add sudo users to the docker group.
+for user in "${SUDO_USERS[@]}"; do
   IFS=":" read -r username user_key <<<"$user"
   if id "$username" &>/dev/null; then
     usermod -aG docker "$username"
