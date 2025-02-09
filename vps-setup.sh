@@ -148,7 +148,7 @@ done
 # Create users with docker-only access.
 for user in "${DOCKER_ONLY_USERS[@]}"; do
   IFS=":" read -r username user_key <<<"$user"
-  create_user "$username" "$user_key" "false"
+  create_user "$username" "$user_key"
 done
 
 printf "All users created successfully.\n"
