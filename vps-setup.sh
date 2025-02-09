@@ -31,8 +31,8 @@ printf "Miscellaneous"
 printf "\n=================================================================================\n\n"
 
 # Update packages
-apt update -y
-apt dist-upgrade -y
+apt-get update -y
+apt-get dist-upgrade -y
 
 timedatectl set-timezone UTC
 
@@ -43,7 +43,7 @@ if ! grep -q "^kernel.panic = 1$" /etc/sysctl.conf; then
 fi
 
 # Rotate logs
-apt install -y logrotate
+apt-get install -y logrotate
 if [ ! -f /etc/logrotate.d/custom ]; then
   cat <<'EOF' >/etc/logrotate.d/custom
 /var/log/*.log
@@ -100,7 +100,7 @@ add_sysctl "net.ipv4.conf.all.log_martians" "1"
 sysctl -p
 
 # fail2ban
-apt install -y fail2ban
+apt-get install -y fail2ban
 if [ ! -f /etc/fail2ban/jail.local ]; then
   cat <<'EOF' >/etc/fail2ban/jail.local
 [DEFAULT]
@@ -145,6 +145,7 @@ for user in "${SUDO_USERS[@]}"; do
   IFS=":" read -r username user_key <<<"$user"
   create_user_if_not_exists "$username" "$user_key"
   echo "$username ALL=(ALL) NOPASSWD:ALL" >"/etc/sudoers.d/$username"
+  chmod 0440 "/etc/sudoers.d/$username"
 done
 
 # Create users with docker-only access.
@@ -187,7 +188,7 @@ printf "\n\n====================================================================
 printf "Unattended upgrades"
 printf "\n=================================================================================\n\n"
 
-apt install -y unattended-upgrades
+apt-get install -y unattended-upgrades
 
 modify_config() {
   local file="$1"
