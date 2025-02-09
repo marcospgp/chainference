@@ -103,12 +103,12 @@ add_sysctl "net.ipv4.conf.all.send_redirects" "0"
 add_sysctl "net.ipv4.conf.all.rp_filter" "1"
 add_sysctl "net.ipv4.tcp_syncookies" "1"
 add_sysctl "net.ipv4.conf.all.log_martians" "1"
+add_sysctl "net.ipv4.conf.all.accept_source_route" "0"
 sysctl -p
 
 # fail2ban
 apt-get install -y fail2ban
-if [ ! -f /etc/fail2ban/jail.local ]; then
-  cat <<'EOF' >/etc/fail2ban/jail.local
+cat <<'EOF' >/etc/fail2ban/jail.local
 [DEFAULT]
 bantime = 1h
 findtime = 10m
@@ -118,7 +118,16 @@ backend = auto
 [sshd]
 enabled = true
 EOF
-fi
+cat <<'EOF' >/etc/fail2ban/jail.d/recidive.conf
+[recidive]
+enabled = true
+filter = recidive
+logpath = /var/log/fail2ban.log
+maxretry = 5
+bantime = 1w
+EOF
+systemctl restart fail2ban
+
 systemctl restart fail2ban
 systemctl enable --now fail2ban
 
@@ -275,3 +284,16 @@ apt-get clean
 printf "\n\n=================================================================================\n"
 printf "Setup script ran successfully."
 printf "\n=================================================================================\n\n"
+
+if [ -f /var/run/reboot-required ]; then
+  printf "A system restart is required.\n"
+  read -p "Would you like to restart now? (y/N): " -r REPLY
+  if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+    printf "\nRestarting now...\n"
+    reboot
+  else
+    printf "\nRestart skipped. Remember to restart later.\n"
+  fi
+else
+  printf "\nNo restart required.\n"
+fi
