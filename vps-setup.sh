@@ -140,18 +140,16 @@ create_user_if_not_exists() {
   fi
 }
 
-# Create users with sudo privileges.
-for user in "${SUDO_USERS[@]}"; do
+# Create users.
+for user in "${SUDO_USERS[@]}" "${DOCKER_ONLY_USERS[@]}"; do
   IFS=":" read -r username user_key <<<"$user"
   create_user_if_not_exists "$username" "$user_key"
-  echo "$username ALL=(ALL) NOPASSWD:ALL" >"/etc/sudoers.d/$username"
-  chmod 0440 "/etc/sudoers.d/$username"
 done
 
-# Create users with docker-only access.
-for user in "${DOCKER_ONLY_USERS[@]}"; do
-  IFS=":" read -r username user_key <<<"$user"
-  create_user_if_not_exists "$username" "$user_key"
+# Add sudo privileges to sudo users.
+for user in "${SUDO_USERS[@]}"; do
+  echo "$username ALL=(ALL) NOPASSWD:ALL" >"/etc/sudoers.d/$username"
+  chmod 0440 "/etc/sudoers.d/$username"
 done
 
 printf "All users created successfully.\n"
@@ -246,30 +244,19 @@ for user in "${SUDO_USERS[@]}" "${DOCKER_ONLY_USERS[@]}"; do
 done
 
 # Avoid arbitrarily large docker logs.
-configure_docker_logs() {
-  local CONFIG="/etc/docker/daemon.json"
-  local MAX_SIZE="5m"
-  local MAX_FILE="1"
+mkdir -p /etc/docker
 
-  touch "$CONFIG"
-  # If CONFIG is empty, initialize it as an empty JSON object
-  if [ ! -s "$CONFIG" ]; then
-    echo '{}' >"$CONFIG"
-  fi
-
-  apt-get install -y jq
-
-  jq -n --argfile existing "$CONFIG" \
-    --arg log_driver "json-file" \
-    --arg max_size "$MAX_SIZE" \
-    --arg max_file "$MAX_FILE" \
-    '($existing + {"log-driver": $log_driver, "log-opts": {"max-size": $max_size, "max-file": $max_file}})
-     | .["log-driver"] = $log_driver' >"$CONFIG.tmp" && mv "$CONFIG.tmp" "$CONFIG"
-
-  systemctl restart docker
+cat <<'EOF' >/etc/docker/daemon.json
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "5m",
+    "max-file": "1"
+  }
 }
+EOF
 
-configure_docker_logs
+systemctl restart docker
 
 printf "\n\n=================================================================================\n"
 printf "Final cleanup"
