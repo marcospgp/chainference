@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euxo pipefail
+set -euo pipefail
 
 # Script used to initialize VPS.
 # Usage:
@@ -21,40 +21,114 @@ The corresponding public key should be given read access to relevant repos.
 EOF
 )
 
-printf "\n\n ========> SSH hardening \n\n"
+printf "\n\n=================================================================================\n"
+printf "Miscellaneous"
+printf "\n=================================================================================\n\n"
 
-sed -i 's/^#?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-sed -i 's/^#?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+# Update packages
+apt update -y
+# Same as apt upgrade but will add & remove packages as appropriate.
+apt dist-upgrade -y
+
+timedatectl set-timezone UTC
+
+# Reboot on kernel panic
+if ! grep -q "^kernel.panic = 1$" /etc/sysctl.conf; then
+  echo "kernel.panic = 1" >>/etc/sysctl.conf
+  sysctl -p
+fi
+
+# Rotate logs
+apt install -y logrotate
+if [ ! -f /etc/logrotate.d/custom ]; then
+  cat <<'EOF' >/etc/logrotate.d/custom
+/var/log/*.log
+{
+    size 5M
+    rotate 1
+    missingok
+    notifempty
+    nocompress
+    copytruncate
+}
+EOF
+fi
+
+printf "\n\n=================================================================================\n"
+printf "Security"
+printf "\n=================================================================================\n\n"
+
+# SSH hardening
+modify_ssh_config() {
+  local param="$1"
+  local value="$2"
+  local file="/etc/ssh/sshd_config"
+
+  grep -qE "^#?$param" "$file" && sed -i "s/^#\?$param.*/$param $value/" "$file" || echo "$param $value" >>"$file"
+}
+modify_ssh_config "PermitRootLogin" "no"
+modify_ssh_config "PasswordAuthentication" "no"
+modify_ssh_config "PubkeyAuthentication" "yes"
 systemctl restart ssh
 
-printf "\n\n ========> Creating users and setting up SSH keys \n\n"
+# Lock root password.
+passwd --lock root
+
+# Sysctl hardening
+add_sysctl() {
+  local key="$1"
+  local value="$2"
+  if ! grep -q "^$key = $value$" /etc/sysctl.conf; then
+    echo "$key = $value" >>/etc/sysctl.conf
+  fi
+}
+add_sysctl "net.ipv4.conf.all.accept_redirects" "0"
+add_sysctl "net.ipv4.conf.all.send_redirects" "0"
+add_sysctl "net.ipv4.conf.all.rp_filter" "1"
+add_sysctl "net.ipv4.tcp_syncookies" "1"
+add_sysctl "net.ipv4.conf.all.log_martians" "1"
+sysctl -p
+
+# fail2ban
+apt install -y fail2ban
+if [ ! -f /etc/fail2ban/jail.local ]; then
+  cat <<'EOF' >/etc/fail2ban/jail.local
+[DEFAULT]
+bantime = 10m
+findtime = 10m
+maxretry = 5
+backend = auto
+
+[sshd]
+enabled = true
+EOF
+fi
+systemctl restart fail2ban
+systemctl enable --now fail2ban
+
+# Enable firewall.
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow OpenSSH
+ufw --force enable
+
+printf "\n\n=================================================================================\n"
+printf "Create users"
+printf "\n=================================================================================\n\n"
 
 create_user() {
   local USERNAME="$1"
   local SSH_KEY="$2"
 
-  # Create user if it doesn't exist
   if ! id "$USERNAME" &>/dev/null; then
-    useradd -m -s /bin/bash "$USERNAME"
+    adduser --disabled-password --gecos "" "$USERNAME"
+    mkdir -p "/home/$USERNAME/.ssh"
+    echo "$SSH_KEY" >"/home/$USERNAME/.ssh/authorized_keys"
+    chmod 700 "/home/$USERNAME/.ssh"
+    chmod 600 "/home/$USERNAME/.ssh/authorized_keys"
+    chown -R "$USERNAME:$USERNAME" "/home/$USERNAME/.ssh"
+    echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >"/etc/sudoers.d/$USERNAME"
   fi
-
-  # Grant sudo privileges without password
-  echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >"/etc/sudoers.d/$USERNAME"
-  chmod 440 "/etc/sudoers.d/$USERNAME"
-
-  # Set up SSH directory
-  local SSH_DIR="/home/$USERNAME/.ssh"
-  mkdir -p "$SSH_DIR"
-  chmod 700 "$SSH_DIR"
-
-  # Add the SSH key
-  echo "$SSH_KEY" >"$SSH_DIR/authorized_keys"
-  chmod 600 "$SSH_DIR/authorized_keys"
-
-  # Ensure proper ownership
-  chown -R "$USERNAME:$USERNAME" "$SSH_DIR"
-
-  printf "✅ Created user: %s with SSH access.\n\n" "$USERNAME"
 }
 
 for user in "${USERS[@]}"; do
@@ -62,82 +136,107 @@ for user in "${USERS[@]}"; do
   create_user "$username" "$ssh_key"
 done
 
-printf "\n\n ✅ All users created successfully! \n\n"
+printf "All users created successfully.\n"
 
-printf "\n\n ========> Setup github user \n\n"
+printf "\n\n=================================================================================\n"
+printf "Set up github user"
+printf "\n=================================================================================\n\n"
 
-# Store private SSH key.
-cat <<EOF >/home/github/.ssh/id_ed25519
+if [ ! -f /home/github/.ssh/id_ed25519 ]; then
+  # Store "github" user's private SSH key.
+  cat <<EOF >/home/github/.ssh/id_ed25519
 $SSH_KEY
 EOF
-chmod 600 /home/github/.ssh/id_ed25519
+  chmod 600 /home/github/.ssh/id_ed25519
 
-# Add github to allowed hosts.
-touch /home/github/.ssh/known_hosts
-ssh-keyscan github.com >>/home/github/.ssh/known_hosts
+  # Add github to allowed hosts.
+  touch /home/github/.ssh/known_hosts
+  if ! grep -q "github.com" /home/github/.ssh/known_hosts; then
+    ssh-keyscan github.com >>/home/github/.ssh/known_hosts
+  fi
+  chown -R github:github /home/github/.ssh
+fi
 
 # Ensure correct ownership for everything in .ssh
 chown -R github:github /home/github/.ssh
 
-printf "\n\n ========> Update packages \n\n"
-apt update -y
-# Same as apt upgrade but will add & remove packages as appropriate.
-apt dist-upgrade -y
-
-printf "\n\n ========> unattended-upgrades \n\n"
+printf "\n\n=================================================================================\n"
+printf "Unattended upgrades"
+printf "\n=================================================================================\n\n"
 
 apt install -y unattended-upgrades
 
-cat <<EOF >/etc/apt/apt.conf.d/20auto-upgrades
-APT::Periodic::Update-Package-Lists "1";
-APT::Periodic::Unattended-Upgrade "1";
-EOF
+modify_config() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
 
-# Reboot at 12 noon, when america is sleeping.
-cat <<EOF >/etc/apt/apt.conf.d/50unattended-upgrades
-Unattended-Upgrade::Allowed-Origins {
-  "\${distro_id}:\${distro_codename}-security";
-  "\${distro_id}:\${distro_codename}-updates";
-};
-Unattended-Upgrade::Automatic-Reboot "true";
-Unattended-Upgrade::Automatic-Reboot-Time "12:00";
-EOF
+  grep -qE "^$key" "$file" && sed -i "s/^$key.*/$key $value/" "$file" || echo "$key $value" >>"$file"
+}
+
+modify_config "/etc/apt/apt.conf.d/20auto-upgrades" "APT::Periodic::Update-Package-Lists" "\"1\";"
+modify_config "/etc/apt/apt.conf.d/20auto-upgrades" "APT::Periodic::Unattended-Upgrade" "\"1\";"
+modify_config "/etc/apt/apt.conf.d/20auto-upgrades" "APT::Periodic::RandomSleep" "\"3600\";"
+modify_config "/etc/apt/apt.conf.d/50unattended-upgrades" "Unattended-Upgrade::Automatic-Reboot" "\"true\";"
+# Reboot at 12 noon UTC, when america is sleeping.
+modify_config "/etc/apt/apt.conf.d/50unattended-upgrades" "Unattended-Upgrade::Automatic-Reboot-Time" "\"12:00\";"
 
 systemctl enable --now unattended-upgrades
+unattended-upgrades --dry-run
 
-printf "\n\n ========> Fail2ban \n\n"
-apt install -y fail2ban
-systemctl enable fail2ban
-systemctl start fail2ban
+printf "\n\n=================================================================================\n"
+printf "Set up docker"
+printf "\n=================================================================================\n\n"
 
-printf "\n\n ========> Firewall \n\n"
-ufw allow OpenSSH
-ufw --force enable
+# Steps copied from https://docs.docker.com/engine/install/ubuntu/ (removed sudo )
 
-printf "\n\n ========> Set up Docker \n\n"
+if ! command -v docker &>/dev/null; then
+  # Add Docker's official GPG key:
+  apt-get update
+  apt-get install -y ca-certificates curl
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  chmod a+r /etc/apt/keyrings/docker.asc
 
-# Steps copied from https://docs.docker.com/engine/install/ubuntu/
-# (removed sudo )
+  # Add the repository to Apt sources:
+  echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+    $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" |
+    tee /etc/apt/sources.list.d/docker.list >/dev/null
+  apt-get update
 
-# Add Docker's official GPG key:
-apt-get update
-apt-get install -y ca-certificates curl
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-chmod a+r /etc/apt/keyrings/docker.asc
+  apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-# Add the repository to Apt sources:
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" |
-  tee /etc/apt/sources.list.d/docker.list >/dev/null
-apt-get update
+  systemctl enable --now docker
+fi
 
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+# Avoid arbitrarily large docker logs.
+configure_docker_logs() {
+  local CONFIG="/etc/docker/daemon.json"
+  local MAX_SIZE="5m"
+  local MAX_FILE="1"
 
-systemctl enable --now docker
+  touch "$CONFIG"
 
-printf "\n\n ========> Disable root user \n\n"
-passwd -l root
+  jq -n --argfile existing "$CONFIG" \
+    --arg log_driver "json-file" \
+    --arg max_size "$MAX_SIZE" \
+    --arg max_file "$MAX_FILE" \
+    '($existing + {"log-driver": $log_driver, "log-opts": {"max-size": $max_size, "max-file": $max_file}})
+     | .["log-driver"] = $log_driver' >"$CONFIG.tmp" && mv "$CONFIG.tmp" "$CONFIG"
 
-printf "\n\n ========> setup script ran successfully \n\n"
+  systemctl restart docker
+}
+
+configure_docker_logs
+
+printf "\n\n=================================================================================\n"
+printf "Final cleanup"
+printf "\n=================================================================================\n\n"
+
+apt-get autoremove -y
+apt-get clean
+
+printf "\n\n=================================================================================\n"
+printf "Setup script ran successfully."
+printf "\n=================================================================================\n\n"
