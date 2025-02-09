@@ -8,11 +8,13 @@ set -euo pipefail
 #   3. Copy script into file in VPS, updating variables below
 #   4. Run the script file with the "bash" command.
 
+# Users with sudo privileges
 SUDO_USERS=(
   "bernardo:ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBesw1jrqTa2CepHsk35RX1wZeT5CCM1hBgbS8KDLS9D bfar97@gmail.com"
   "marcos:ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGJ2vrIhoGkV+8kath2C3utUJ8zymmascDMWpLQs1Yrr email@marcospereira.me"
 )
 
+# Users with docker-only access (no sudo privileges)
 DOCKER_ONLY_USERS=(
   "github:ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDR7JRuR3FgsI2RRqtb5mS00jO/emFGS0cyM3M1n6Up2 github"
 )
@@ -127,6 +129,7 @@ printf "\n======================================================================
 create_user() {
   local USERNAME="$1"
   local AUTHORIZED_KEY="$2"
+  local SUDO="$3"
 
   if ! id "$USERNAME" &>/dev/null; then
     adduser --disabled-password --gecos "" "$USERNAME"
@@ -135,13 +138,22 @@ create_user() {
     chmod 700 "/home/$USERNAME/.ssh"
     chmod 600 "/home/$USERNAME/.ssh/authorized_keys"
     chown -R "$USERNAME:$USERNAME" "/home/$USERNAME/.ssh"
-    echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >"/etc/sudoers.d/$USERNAME"
+    if [ "$SUDO" = "true" ]; then
+      echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >"/etc/sudoers.d/$USERNAME"
+    fi
   fi
 }
 
-for user in "${USERS[@]}"; do
+# Create users with sudo privileges.
+for user in "${SUDO_USERS[@]}"; do
   IFS=":" read -r username user_key <<<"$user"
-  create_user "$username" "$user_key"
+  create_user "$username" "$user_key" "true"
+done
+
+# Create users with docker-only access.
+for user in "${DOCKER_ONLY_USERS[@]}"; do
+  IFS=":" read -r username user_key <<<"$user"
+  create_user "$username" "$user_key" "false"
 done
 
 printf "All users created successfully.\n"
@@ -167,6 +179,12 @@ fi
 
 # Ensure correct ownership for everything in .ssh
 chown -R github:github /home/github/.ssh
+
+# Ensure /srv exists and grant full access to the github user.
+# This is where projects should live.
+mkdir -p /srv
+chown -R github:github /srv
+chmod -R 755 /srv
 
 printf "\n\n=================================================================================\n"
 printf "Unattended upgrades"
@@ -221,8 +239,8 @@ if ! command -v docker &>/dev/null; then
   systemctl enable --now docker
 fi
 
-# Add users to the docker group
-for user in "${USERS[@]}"; do
+# Add all users to the docker group.
+for user in "${SUDO_USERS[@]}" "${DOCKER_ONLY_USERS[@]}"; do
   IFS=":" read -r username user_key <<<"$user"
   if id "$username" &>/dev/null; then
     usermod -aG docker "$username"

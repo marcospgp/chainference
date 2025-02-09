@@ -25,9 +25,9 @@ jobs:
           # Check if the project folder is a valid git repo
           if [ ! -d "${PROJECT_PATH}/.git" ]; then
             echo "Project directory is missing or not a git repository. Performing initial setup..."
-            sudo rm -rf "${PROJECT_PATH}"
-            sudo mkdir -p "${PROJECT_PATH}"
-            sudo chown -R ${VPS_USER}:${VPS_USER} "${PROJECT_PATH}"
+            rm -rf "${PROJECT_PATH}"
+            mkdir -p "${PROJECT_PATH}"
+            chown -R ${VPS_USER}:${VPS_USER} "${PROJECT_PATH}"
             git clone --depth=1 git@github.com:marcospgp/chainference.git "${PROJECT_PATH}"
             cd "${PROJECT_PATH}"
           else
@@ -37,8 +37,8 @@ jobs:
             git reset --hard origin/main
           fi
           cd frontend
-          sudo docker compose down
-          sudo docker compose up -d --build
+          docker compose down
+          docker compose up -d --build
           EOF
 
           rm "$temp_key"
