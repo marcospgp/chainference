@@ -23,7 +23,6 @@ OTHER_USERS=(
 # The corresponding public key should be given read access to relevant repos.
 PRIVATE_SSH_KEY=$(
   cat <<'EOF'
-a
 EOF
 )
 
@@ -170,9 +169,13 @@ for user in "${SUDO_USERS[@]}" "${OTHER_USERS[@]}"; do
   create_user_if_not_exists "$username" "$user_key"
 done
 
-# Add sudo privileges to sudo users.
+# Add sudo privileges to sudo users & enable passwordless sudo.
 for user in "${SUDO_USERS[@]}"; do
-  echo "$username ALL=(ALL) NOPASSWD:ALL" >"/etc/sudoers.d/$username"
+  IFS=":" read -r username user_key <<<"$user"
+  usermod -aG sudo "$username"
+
+  # Grant passwordless sudo
+  echo "$username ALL=(ALL) NOPASSWD: ALL" >"/etc/sudoers.d/$username"
   chmod 0440 "/etc/sudoers.d/$username"
 done
 
