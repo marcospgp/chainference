@@ -2,16 +2,16 @@ FROM ubuntu:22.04
 
 RUN apt-get update && apt-get install -y curl git build-essential unzip
 
+COPY . /app
+
 # Switch to non root user.
 RUN useradd -m -s /bin/bash appuser
-RUN mkdir -p /app && chown -R appuser:appuser /app
+RUN chown -R appuser:appuser /app
 USER appuser
 
 # Install Bun.
 RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/home/appuser/.bun/bin:$PATH"
-
-COPY . /app
 
 # This dockerfile is meant to be built in the context of the parent folder, so now we get back in
 # the current folder.
