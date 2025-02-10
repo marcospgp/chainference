@@ -273,6 +273,15 @@ set_up_docker() {
 EOF
 
   systemctl restart docker
+
+  # Ensure Docker gets updated by unattended upgrades.
+  # shellcheck disable=SC2016
+  if grep -qxF '"Docker:${distro_codename}";' /etc/apt/apt.conf.d/50unattended-upgrades; then
+    echo "Docker is already included in unattended-upgrades."
+  else
+    echo "Adding Docker to unattended-upgrades..."
+    sed -i '/Unattended-Upgrade::Allowed-Origins {/a\        "Docker:stable";' /etc/apt/apt.conf.d/50unattended-upgrades
+  fi
 }
 
 cleanup() {
