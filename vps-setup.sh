@@ -7,9 +7,8 @@ set -euo pipefail
 # Usage:
 #   1. Create VPS.
 #   2. SSH in as root user.
-#   3. Update variables below and copy the contents of this file to clipboard.
-#   4. In the VPS run "nano setup.sh", paste, and save.
-#   5. Run "bash setup.sh".
+#   3. Run "nano setup.sh", paste the contents of this file, update variables below, and save.
+#   4. Run "bash setup.sh".
 
 # Paste VPS private SSH key here! (between the lines containing "EOF")
 # The corresponding public key should be given read access to relevant repos.
@@ -38,6 +37,25 @@ print_section() {
   printf "\n\n=================================================================================\n"
   printf "%s" "$title"
   printf "\n=================================================================================\n\n"
+}
+
+set_config_line() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  # Separator, defaults to space.
+  local sep="${4:- }"
+
+  # Ensure the file exists
+  touch "$file"
+
+  # If the key exists, update the line.
+  if grep -qE "^[[:space:]]*#?[[:space:]]*${key}\b" "$file"; then
+    sed -i -E "s|^[[:space:]]*#?[[:space:]]*${key}\b.*|${key}${sep}${value}|g" "$file"
+  # Otherwise, add it.
+  else
+    echo "${key}${sep}${value}" >>"$file"
+  fi
 }
 
 miscellaneous() {
@@ -69,25 +87,6 @@ miscellaneous() {
     copytruncate
 }
 EOF
-  fi
-}
-
-set_config_line() {
-  local file="$1"
-  local key="$2"
-  local value="$3"
-  # Separator, defaults to space.
-  local sep="${4:- }"
-
-  # Ensure the file exists
-  touch "$file"
-
-  # Use sed to replace the line if the key exists (even if it's commented out)
-  if grep -qE "^\s*#?\s*$key\s*$sep?" "$file"; then
-    sed -i "s|^\s*#?\s*$key\s*$sep?.*|$key$sep$value|" "$file"
-  # Otherwise, add the line.
-  else
-    echo "$key$sep$value" >>"$file"
   fi
 }
 
@@ -134,8 +133,6 @@ logpath = /var/log/fail2ban.log
 maxretry = 5
 bantime = 1w
 EOF
-  systemctl restart fail2ban
-
   systemctl restart fail2ban
   systemctl enable --now fail2ban
 
