@@ -5,13 +5,16 @@ RUN apt-get update && apt-get install -y curl git build-essential unzip
 RUN curl -fsSL https://bun.sh/install | bash && \
     echo 'export PATH="/root/.bun/bin:$PATH"' >> /root/.bashrc
 
-WORKDIR /app
-
 COPY . /app
 
 # This dockerfile is meant to be built in the context of the parent folder, so now we get back in
 # the current folder.
 WORKDIR /app/frontend
+
+# Switch to non root user.
+RUN useradd -m -s /bin/bash appuser
+RUN chown -R appuser:appuser /app
+USER appuser
 
 RUN /root/.bun/bin/bun install
 
