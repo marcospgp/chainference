@@ -9,7 +9,7 @@ USER appuser
 
 # Install Bun.
 RUN curl -fsSL https://bun.sh/install | bash
-RUN ln -s $HOME/.bun/bin/bun /usr/local/bin/bun
+RUN export PATH="/home/appuser/.bun/bin:$PATH"
 
 COPY . /app
 
