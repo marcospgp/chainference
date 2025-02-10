@@ -28,7 +28,7 @@ SUDO_USERS=(
   "marcos:ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGJ2vrIhoGkV+8kath2C3utUJ8zymmascDMWpLQs1Yrr email@marcospereira.me"
 )
 
-OTHER_USERS=(
+DOCKER_ONLY_USERS=(
   "github:ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDR7JRuR3FgsI2RRqtb5mS00jO/emFGS0cyM3M1n6Up2 github"
 )
 
@@ -61,11 +61,11 @@ set_config_line() {
 miscellaneous() {
   print_section "miscellaneous"
 
+  timedatectl set-timezone UTC
+
   # Update packages
   apt-get update -y
   apt-get dist-upgrade -y
-
-  timedatectl set-timezone UTC
 
   # Reboot on kernel panic
   if ! grep -q "^kernel.panic = 1$" /etc/sysctl.conf; then
@@ -167,12 +167,12 @@ create_users() {
   print_section "create users"
 
   # Create users.
-  for user in "${SUDO_USERS[@]}" "${OTHER_USERS[@]}"; do
+  for user in "${SUDO_USERS[@]}" "${DOCKER_ONLY_USERS[@]}"; do
     IFS=":" read -r username user_key <<<"$user"
     create_user_if_not_exists "$username" "$user_key"
   done
 
-  # Add sudo privileges to sudo users & enable passwordless sudo.
+  # Add passwordless sudo privileges to sudo users.
   for user in "${SUDO_USERS[@]}"; do
     IFS=":" read -r username user_key <<<"$user"
     usermod -aG sudo "$username"
@@ -208,10 +208,6 @@ EOF
   mkdir -p /srv
   chown -R github:github /srv
   chmod -R 755 /srv
-
-  # Allow github user to run only specific docker commands.
-  echo "github ALL=(ALL) NOPASSWD: /usr/bin/docker compose up *, /usr/bin/docker compose down *" >/etc/sudoers.d/github
-  chmod 0440 /etc/sudoers.d/github
 }
 
 unattended_upgrades() {
@@ -254,8 +250,9 @@ set_up_docker() {
     systemctl enable --now docker
   fi
 
-  # Add sudo users to the docker group.
-  for user in "${SUDO_USERS[@]}"; do
+  # Add users to the docker group.
+  # This is equivalent to root access.
+  for user in "${SUDO_USERS[@]}" "${DOCKER_ONLY_USERS[@]}"; do
     IFS=":" read -r username user_key <<<"$user"
     if id "$username" &>/dev/null; then
       usermod -aG docker "$username"
