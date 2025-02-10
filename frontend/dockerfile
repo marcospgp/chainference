@@ -18,4 +18,4 @@ WORKDIR /app/frontend
 
 RUN bun install
 
-CMD ["/root/.bun/bin/bun", "run", "prod"]
+CMD ["bun", "run", "prod"]
