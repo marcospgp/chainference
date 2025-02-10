@@ -2,8 +2,13 @@ FROM ubuntu:22.04
 
 RUN apt-get update && apt-get install -y curl git build-essential unzip
 
-RUN curl -fsSL https://bun.sh/install | bash && \
-    echo 'export PATH="/root/.bun/bin:$PATH"' >> /root/.bashrc
+# Switch to non root user.
+RUN useradd -m -s /bin/bash appuser
+RUN chown -R appuser:appuser /app
+USER appuser
+
+# Install Bun.
+RUN curl -fsSL https://bun.sh/install | bash
 
 COPY . /app
 
@@ -11,11 +16,6 @@ COPY . /app
 # the current folder.
 WORKDIR /app/frontend
 
-# Switch to non root user.
-RUN useradd -m -s /bin/bash appuser
-RUN chown -R appuser:appuser /app
-USER appuser
-
-RUN /root/.bun/bin/bun install
+RUN bun install
 
 CMD ["/root/.bun/bin/bun", "run", "prod"]
