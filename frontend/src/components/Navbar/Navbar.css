@@ -1,48 +1,37 @@
-@font-face {
-  font-family: 'GreekFreak';
-  src: url('../../assets//fonts/CapitalisTypOasis.ttf') format('truetype');
-}
-
 .navbar {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-
-  padding: var(--space-s);
-  font-family: var(--font-logo);
-
-  .navbar-left {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-  }
+  padding: var(--space-l) var(--space-xl);
 
   .navbar-logo {
     display: flex;
-    flex-direction: row-reverse;
+    flex-direction: row;
     align-items: center;
-    gap: var(--space-xs);
-  }
 
-  .navbar-logo img {
-    margin-bottom: var(--space-s);
-  }
-
-  .navbar-logo-text {
-    font-family: 'GreekFreak';
-    font-weight: 100;
-    font-size: var(--font-l);
-    color: #ffffff;
-  }
-
-  a {
-    color: var(--color-primary);
+    font-family: "Bernardo Moda";
     text-decoration: none;
-  }
+    color: var(--color-primary-highlight);
 
-  h1 {
-    color: '#FFFFFF';
+    svg {
+      display: block;
+      width: auto;
+      height: 85px;
+
+      path {
+        stroke: var(--color-primary-highlight);
+        stroke-width: 1px;
+      }
+    }
+
+    h1 {
+      font-weight: bold;
+      margin: 0;
+
+      position: relative;
+      top: 11px;
+    }
   }
 
   .wallet button {

@@ -1,12 +1,33 @@
+@font-face {
+  font-family: "GreekFreak";
+  src: url("./assets/fonts/CapitalisTypOasis.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "MB Forever Raw";
+  src: url("./assets/fonts/MB-ForeverRaw.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Landsdowne";
+  src: url("./assets/fonts/Landsdowne.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Bernardo Moda";
+  src: url("./assets/fonts/Bernardo-Moda.ttf") format("truetype");
+}
+
 :root {
   --color-background: #0e1014;
   --color-background-alt: #1d1d20;
-  --color-primary: #4d258aff;
+  --color-primary: #5f2fa7;
   --color-primary-half: hsla(264, 58%, 34%, 0.407);
+  --color-primary-highlight: rgb(145, 72, 255);
   --color-text: #f5f5f5ff;
 
-  --font-base: 'Noto Sans', sans-serif;
-  --font-logo: 'JetBrains Mono', serif;
+  --font-base: "Noto Sans", sans-serif;
+  --font-logo: "JetBrains Mono", serif;
   --font-xs: clamp(0.25rem, 1vw, 0.5rem);
   --font-s: clamp(0.8rem, 1.5vw, 0.9rem);
   --font-m: clamp(1rem, 2vw, 1.2rem);
