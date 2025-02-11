@@ -172,12 +172,14 @@ create_users() {
     create_user_if_not_exists "$username" "$user_key"
   done
 
-  # Add passwordless sudo privileges to sudo users.
+  # Give sudo privileges to sudo users.
   for user in "${SUDO_USERS[@]}"; do
     IFS=":" read -r username user_key <<<"$user"
+
+    # Add to sudo group.
     usermod -aG sudo "$username"
 
-    # Grant passwordless sudo
+    # Grant passwordless sudo.
     echo "$username ALL=(ALL) NOPASSWD: ALL" >"/etc/sudoers.d/$username"
     chmod 0440 "/etc/sudoers.d/$username"
   done
