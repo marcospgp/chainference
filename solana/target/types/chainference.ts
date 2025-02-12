@@ -250,6 +250,11 @@ export type Chainference = {
       ],
       "accounts": [
         {
+          "name": "requester",
+          "writable": true,
+          "signer": true
+        },
+        {
           "name": "request",
           "writable": true,
           "pda": {
@@ -272,11 +277,6 @@ export type Chainference = {
               }
             ]
           }
-        },
-        {
-          "name": "requester",
-          "writable": true,
-          "signer": true
         },
         {
           "name": "systemProgram",
@@ -360,7 +360,7 @@ export type Chainference = {
             "type": "string"
           },
           {
-            "name": "maxCost",
+            "name": "maxCostLamports",
             "type": "u64"
           },
           {

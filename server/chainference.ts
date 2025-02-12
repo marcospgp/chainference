@@ -4,7 +4,7 @@ import * as anchor from "@coral-xyz/anchor";
 
 export async function loadChainference(
   wallet: anchor.web3.Keypair,
-  isProd: boolean
+  isProd: boolean = false
 ) {
   let connection: anchor.web3.Connection;
 

@@ -4,25 +4,26 @@ import * as anchor from "@coral-xyz/anchor";
 import type { Chainference } from "../solana/target/types/chainference";
 import { PublicKey } from "@solana/web3.js";
 
-const WALLET_PATH = path.join(__dirname, "wallet.json");
-
-export function loadOrCreateWallet() {
+export function loadOrCreateWallet(filename: string = "wallet.json") {
   let wallet: anchor.web3.Keypair;
+  const wallet_path = path.join(__dirname, filename);
 
-  if (fs.existsSync(WALLET_PATH)) {
+  if (fs.existsSync(wallet_path)) {
     const secretKey = Uint8Array.from(
-      JSON.parse(fs.readFileSync(WALLET_PATH, "utf8"))
+      JSON.parse(fs.readFileSync(wallet_path, "utf8"))
     );
     wallet = anchor.web3.Keypair.fromSecretKey(secretKey);
-    console.log("Loaded wallet from wallet.json:", wallet.publicKey.toBase58());
+    console.log(
+      `Loaded wallet from file "${wallet_path}": ${wallet.publicKey.toBase58()}`
+    );
   } else {
     prompt(
-      "No wallet.json file found in project folder, so a new wallet will be generated. Press enter to continue."
+      `Could not find wallet file "${wallet_path}", so one will be generated. Press enter to continue.`
     );
     wallet = anchor.web3.Keypair.generate();
-    fs.writeFileSync(WALLET_PATH, JSON.stringify(Array.from(wallet.secretKey)));
+    fs.writeFileSync(wallet_path, JSON.stringify(Array.from(wallet.secretKey)));
     console.log(
-      "Generated wallet and stored in wallet.json:",
+      `Generated wallet at "${wallet_path}":`,
       wallet.publicKey.toBase58()
     );
   }
@@ -37,7 +38,7 @@ export async function getBalanceSol(
   return balance / anchor.web3.LAMPORTS_PER_SOL;
 }
 
-export async function airdropSol(
+async function airdropSol(
   publicKey: anchor.web3.PublicKey,
   solAmount: number,
   connection: anchor.web3.Connection
@@ -45,7 +46,7 @@ export async function airdropSol(
   const lamports = solAmount * anchor.web3.LAMPORTS_PER_SOL;
   const signature = await connection.requestAirdrop(publicKey, lamports);
 
-  await waitForConfirmation([signature]);
+  await waitForConfirmation(signature);
 }
 
 export async function airdropSolIfBalanceBelow(
@@ -69,7 +70,7 @@ export async function airdropSolIfBalanceBelow(
   );
 }
 
-export async function waitForConfirmation(transactions: string[]) {
+export async function waitForConfirmation(...transactions: string[]) {
   const connection = anchor.getProvider().connection;
   const latestBlockhash = await connection.getLatestBlockhash();
 

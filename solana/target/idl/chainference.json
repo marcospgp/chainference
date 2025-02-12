@@ -244,6 +244,11 @@
       ],
       "accounts": [
         {
+          "name": "requester",
+          "writable": true,
+          "signer": true
+        },
+        {
           "name": "request",
           "writable": true,
           "pda": {
@@ -266,11 +271,6 @@
               }
             ]
           }
-        },
-        {
-          "name": "requester",
-          "writable": true,
-          "signer": true
         },
         {
           "name": "system_program",
@@ -354,7 +354,7 @@
             "type": "string"
           },
           {
-            "name": "max_cost",
+            "name": "max_cost_lamports",
             "type": "u64"
           },
           {

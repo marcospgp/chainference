@@ -170,7 +170,9 @@ describe("Chainference", function () {
       provider.publicKey.toString()
     );
     expect(req!.account.model).to.equal(model);
-    expect(req!.account.maxCost.toString()).to.equal(maxCost.toString());
+    expect(req!.account.maxCostLamports.toString()).to.equal(
+      maxCost.toString()
+    );
     expect(req!.account.sendPromptTo).to.be.a("string").that.is.empty;
     expect(req!.account.lockedBy).to.be.null;
 

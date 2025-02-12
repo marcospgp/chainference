@@ -61,15 +61,21 @@ The localnet can be run separately with `anchor localnet`. Tests can then be run
 
 You can explore the localnet ledger on [Solana explorer](https://explorer.solana.com/?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899) by telling it to connect to `http://localhost:8899`.
 
-## Deploying and undeploying
+## Interacting with the Solana chain
 
-Before deploying, make sure you have configured Solana to use the project's wallet:
+### Setting the right wallet
+
+For things like deploying, make sure you have configured Solana to use the project's wallet:
 
 ```sh
 solana config set --keypair $PWD/wallet.json
 ```
 
-You can then deploy with `anchor deploy`. Unless this is a production deploy, make sure you're on either localnet or devnet (`provider.cluster` field in [`Anchor.toml`](Anchor.toml)).
+You can confirm this by running `solana config get` and checking "keypair path" in the output.
+
+### Deploying
+
+You can deploy with `anchor deploy`. Unless this is a production deploy, make sure you're on either localnet or devnet (`provider.cluster` field in [`Anchor.toml`](Anchor.toml)).
 
 The program can be closed with `solana program close <program ID>`, which reclaims the previously 2-year rent down payment.
 
@@ -79,6 +85,7 @@ After closing you will need to rotate the program key by deleting the `target` f
 Error: WARNING! Closed programs cannot be recreated at the same program id. Once a program is closed, it can never be invoked again. To proceed with closing, rerun the `close` command with the `--bypass-warning` flag
 ```
 
-## Gotchas
+## Anchor gotchas
 
+- The first account in a transaction's input should be the one most likely to be filtered for, as it is easiest to filter the first field with memcmp by simply skipping the anchor discriminator's 8 bytes.
 - [Automatic account resolution when calling `.accounts()`](https://github.com/coral-xyz/anchor/issues/3515)

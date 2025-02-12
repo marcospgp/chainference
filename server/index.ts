@@ -3,6 +3,8 @@ import { Command } from "commander";
 import { loadChainference } from "./chainference";
 import path from "path";
 import { loadModels } from "./models";
+import type { IdlAccounts } from "@coral-xyz/anchor";
+import type { Chainference } from "../solana/target/types/chainference";
 
 const cli = new Command();
 
@@ -19,24 +21,24 @@ cli.command("start").action(async () => {
   );
   const wallet = helpers.loadOrCreateWallet();
 
-  const chainference = await loadChainference(wallet, isProd);
+  const myProgram = await loadChainference(wallet, isProd);
 
   console.log(
     `Wallet balance: ${await helpers.getBalanceSol(
       wallet.publicKey,
-      chainference.provider.connection
+      myProgram.provider.connection
     )} SOL`
   );
 
   if (!isProd) {
-    helpers.airdropSolIfBalanceBelow(
+    await helpers.airdropSolIfBalanceBelow(
       wallet.publicKey,
       1,
-      chainference.provider.connection
+      myProgram.provider.connection
     );
   }
 
-  const servers = await chainference.account.serverAccount.all([
+  const servers = await myProgram.account.serverAccount.all([
     {
       memcmp: {
         offset: 8,
@@ -62,7 +64,7 @@ cli.command("start").action(async () => {
 
     const transactions = await Promise.all(
       servers.map((s) =>
-        chainference.methods
+        myProgram.methods
           .closeServer()
           .accounts({
             serverAccount: s.publicKey,
@@ -71,9 +73,7 @@ cli.command("start").action(async () => {
       )
     );
 
-    await Promise.all(
-      transactions.map((t) => helpers.waitForConfirmation([t]))
-    );
+    await Promise.all(transactions.map((t) => helpers.waitForConfirmation(t)));
   }
 
   const models = loadModels(path.join(__dirname, "models.json"));
@@ -81,11 +81,11 @@ cli.command("start").action(async () => {
   console.log(`Creating new server with models:`);
   models.forEach((x) => console.log(x));
 
-  const transaction = await chainference.methods.addServer(models).rpc();
+  const transaction = await myProgram.methods.addServer(models).rpc();
 
-  await helpers.waitForConfirmation([transaction]);
+  await helpers.waitForConfirmation(transaction);
 
-  const servers2 = await chainference.account.serverAccount.all([
+  const servers2 = await myProgram.account.serverAccount.all([
     {
       memcmp: {
         offset: 8,
@@ -102,21 +102,34 @@ cli.command("start").action(async () => {
 
   console.log(`Created server with public key ${server.publicKey}`);
 
-  helpers.closeServerOnExit(server.publicKey, chainference);
+  helpers.closeServerOnExit(server.publicKey, myProgram);
 
   console.log(`Listening for inference requests...`);
 
-  chainference.provider.connection.onProgramAccountChange(
-    chainference.programId,
+  myProgram.provider.connection.onProgramAccountChange(
+    myProgram.programId,
     async (account) => {
-      const decoded = chainference.coder.accounts.decode(
-        // @ts-expect-error: we have to access a private field here.
-        chainference.account.inferenceRequestAccount._idlAccount,
-        account.accountInfo.data
-      );
+      // Holy shit this is how you properly type a decoded program account 🤮
+      // https://github.com/coral-xyz/anchor/issues/3552
+      const request: IdlAccounts<Chainference>["inferenceRequestAccount"] =
+        myProgram.coder.accounts.decode(
+          // @ts-expect-error: we have to access a private field here.
+          myProgram.account.inferenceRequestAccount._idlAccount,
+          account.accountInfo.data
+        );
 
-      console.log("Incoming inference request:");
-      console.log(decoded);
+      console.log("Detected new inference request:");
+      console.log(request);
+
+      if (request.lockedBy !== null) {
+        console.log(`Request already locked. Skipping...`);
+        return;
+      }
+
+      if (models.find((model) => model.id === request.model) !== undefined) {
+        const sendPromptTo = `https://ask.chainference.app/${account.accountId.toBase58()}`;
+        myProgram.methods.lockRequest(sendPromptTo);
+      }
     }
   );
 });

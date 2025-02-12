@@ -45,12 +45,12 @@ pub mod chainference {
     pub fn request_inference(
         ctx: Context<RequestInferenceCtx>,
         model: String,
-        max_cost: u64,
+        max_cost_lamports: u64,
     ) -> Result<()> {
         let ix = solana_program::system_instruction::transfer(
             ctx.accounts.requester.key,
             ctx.accounts.request.to_account_info().key,
-            max_cost,
+            max_cost_lamports,
         );
         solana_program::program::invoke(
             &ix,
@@ -64,7 +64,7 @@ pub mod chainference {
         let request = &mut ctx.accounts.request;
         request.requester = ctx.accounts.requester.key();
         request.model = model;
-        request.max_cost = max_cost;
+        request.max_cost_lamports = max_cost_lamports;
 
         Ok(())
     }
@@ -103,7 +103,10 @@ pub mod chainference {
             ChainferenceError::ClaimingNonLockedRequest
         );
 
-        require!(amount <= request.max_cost, ChainferenceError::ClaimTooLarge);
+        require!(
+            amount <= request.max_cost_lamports,
+            ChainferenceError::ClaimTooLarge
+        );
 
         ctx.accounts.request.sub_lamports(amount)?;
         ctx.accounts.server_owner.add_lamports(amount)?;
@@ -111,7 +114,7 @@ pub mod chainference {
         // Remaining request balance will be returned to requester when closing the request account,
         // as per this instruction's context.
 
-        (&mut ctx.accounts.request).max_cost = 0;
+        (&mut ctx.accounts.request).max_cost_lamports = 0;
 
         Ok(())
     }
@@ -142,9 +145,9 @@ pub struct InferenceRequestAccount {
     pub requester: Pubkey,
     #[max_len(0)] // We set size later.
     pub model: String,
-    // Max cost in lamports for entire inference.
-    // This account will hold this value in the balance.
-    pub max_cost: u64,
+    // Max cost for entire inference.
+    // This account will hold this value in the balance as a downpayment.
+    pub max_cost_lamports: u64,
     pub locked_by: Option<Pubkey>,
     #[max_len(128)]
     pub send_prompt_to: String,
@@ -183,6 +186,8 @@ pub struct CloseServerCtx<'info> {
 #[derive(Accounts)]
 #[instruction(model: String)]
 pub struct RequestInferenceCtx<'info> {
+    #[account(mut)]
+    pub requester: Signer<'info>,
     #[account(
         init,
         payer = requester,
@@ -191,8 +196,6 @@ pub struct RequestInferenceCtx<'info> {
         bump
     )]
     pub request: Account<'info, InferenceRequestAccount>,
-    #[account(mut)]
-    pub requester: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
