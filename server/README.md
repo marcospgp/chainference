@@ -31,5 +31,5 @@ cloudflared tunnel login
 
 # This can be run any time to start the cloudflare tunnel.
 # Replace <tunnel-name> with the actual name.
-cloudflared tunnel run --token $(cloudflared tunnel token <tunnel-name>) <tunnel-name>
+TUNNEL_NAME=<tunnel-name> cloudflared tunnel run --token $(cloudflared tunnel token $TUNNEL_NAME) $TUNNEL_NAME
 ```

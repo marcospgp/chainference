@@ -95,10 +95,12 @@ export function closeServerOnExit(
   async function closeServer() {
     console.log(`\nClosing server...`);
 
-    await program.methods
+    const transaction = await program.methods
       .closeServer()
       .accounts({ serverAccount: publicKey })
       .rpc();
+
+    await waitForConfirmation(transaction);
 
     process.exit(0);
   }

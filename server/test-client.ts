@@ -2,6 +2,12 @@ import { Command } from "commander";
 import * as helpers from "./helpers";
 import { loadChainference } from "./chainference";
 import * as anchor from "@coral-xyz/anchor";
+import type { IdlAccounts } from "@coral-xyz/anchor";
+import type { Chainference } from "../solana/target/types/chainference";
+
+type InferenceRequestAccount = anchor.ProgramAccount<
+  IdlAccounts<Chainference>["inferenceRequestAccount"]
+>;
 
 const cli = new Command();
 
@@ -70,9 +76,9 @@ cli.action(async () => {
 
   if (existingRequests.length > 0) {
     console.log(
-      `Found ${existingRequests.length} previously existing request${
+      `Found ${existingRequests.length} existing request${
         existingRequests.length === 1 ? "" : "s"
-      }. Canceling...`
+      }. Canceling it...`
     );
 
     const cancel = await chainference.methods.cancelRequest().rpc();
@@ -81,13 +87,97 @@ cli.action(async () => {
 
   console.log(`\nYou can now enter a prompt and submit by pressing enter.\n`);
 
-  const userPrompt = prompt("");
+  const userPrompt = prompt("") ?? "";
 
   const max_cost = 0.1 * anchor.web3.LAMPORTS_PER_SOL;
 
   await chainference.methods
     .requestInference(models[modelIndex] || "", new anchor.BN(max_cost))
     .rpc();
+
+  console.log(
+    `\nPrompt submitted. Waiting for a server to lock the request...`
+  );
+
+  const request = await waitForRequestToBeLocked(chainference, wallet);
+
+  // TODO: Fix signature logic
+  // const signature = await crypto.subtle.sign(
+  //   "Ed25519",
+  //   await crypto.subtle.importKey(
+  //     "pkcs8",
+  //     wallet.secretKey.slice(0, 32),
+  //     { name: "Ed25519", namedCurve: "NODE-ED25519" },
+  //     false,
+  //     ["sign"]
+  //   ),
+  //   request.publicKey.toBytes()
+  // );
+
+  const response = await fetch(request.account.sendPromptTo, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt: new TextEncoder().encode(userPrompt),
+      signature: "fake signature",
+    }),
+  });
+
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+
+  console.log();
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    const chunk = decoder.decode(value, { stream: true });
+    process.stdout.write(chunk);
+  }
 });
 
 cli.parse();
+
+async function waitForRequestToBeLocked(
+  chainference: anchor.Program<Chainference>,
+  wallet: anchor.web3.Keypair
+): Promise<InferenceRequestAccount> {
+  let request: InferenceRequestAccount;
+
+  while (true) {
+    const requestAccounts =
+      await chainference.account.inferenceRequestAccount.all([
+        {
+          memcmp: {
+            offset: 8,
+            bytes: wallet.publicKey.toBase58(),
+          },
+        },
+      ]);
+
+    if (requestAccounts.length > 0) {
+      request = requestAccounts[0]!;
+      break;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  console.log(
+    `Found request account on chain with address "${request.publicKey}"...`
+  );
+
+  while (request.account.sendPromptTo === "") {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    request = {
+      account: await chainference.account.inferenceRequestAccount.fetch(
+        request.publicKey
+      ),
+      publicKey: request.publicKey,
+    };
+  }
+
+  return request;
+}

@@ -5,6 +5,7 @@ import path from "path";
 import { loadModels } from "./models";
 import type { IdlAccounts } from "@coral-xyz/anchor";
 import type { Chainference } from "../solana/target/types/chainference";
+import { startServer } from "./server";
 
 const cli = new Command();
 
@@ -21,12 +22,12 @@ cli.command("start").action(async () => {
   );
   const wallet = helpers.loadOrCreateWallet();
 
-  const myProgram = await loadChainference(wallet, isProd);
+  const chainference = await loadChainference(wallet, isProd);
 
   console.log(
     `Wallet balance: ${await helpers.getBalanceSol(
       wallet.publicKey,
-      myProgram.provider.connection
+      chainference.provider.connection
     )} SOL`
   );
 
@@ -34,11 +35,11 @@ cli.command("start").action(async () => {
     await helpers.airdropSolIfBalanceBelow(
       wallet.publicKey,
       1,
-      myProgram.provider.connection
+      chainference.provider.connection
     );
   }
 
-  const existingServers = await myProgram.account.serverAccount.all([
+  const existingServers = await chainference.account.serverAccount.all([
     {
       memcmp: {
         offset: 8,
@@ -66,7 +67,7 @@ cli.command("start").action(async () => {
 
     const transactions = await Promise.all(
       existingServers.map((s) =>
-        myProgram.methods
+        chainference.methods
           .closeServer()
           .accounts({
             serverAccount: s.publicKey,
@@ -83,11 +84,11 @@ cli.command("start").action(async () => {
   console.log(`Creating new server with models:`);
   models.forEach((x) => console.log(x));
 
-  const transaction = await myProgram.methods.addServer(models).rpc();
+  const transaction = await chainference.methods.addServer(models).rpc();
 
   await helpers.waitForConfirmation(transaction);
 
-  const servers = await myProgram.account.serverAccount.all([
+  const servers = await chainference.account.serverAccount.all([
     {
       memcmp: {
         offset: 8,
@@ -102,23 +103,40 @@ cli.command("start").action(async () => {
 
   const server = servers[0]!;
 
-  console.log(`Created server with public key ${server.publicKey}`);
+  console.log(
+    `Created on-chain server account with address "${server.publicKey}"`
+  );
 
-  helpers.closeServerOnExit(server.publicKey, myProgram);
+  helpers.closeServerOnExit(server.publicKey, chainference);
+
+  // 3819 meaning "chai" as in chainference.
+  const port = 3819;
+  startServer(port, chainference);
 
   console.log(`Listening for inference requests...`);
 
-  myProgram.provider.connection.onProgramAccountChange(
-    myProgram.programId,
+  chainference.provider.connection.onProgramAccountChange(
+    chainference.programId,
     async (account) => {
       // Holy shit this is how you properly type a decoded program account 🤮
       // https://github.com/coral-xyz/anchor/issues/3552
-      const request: IdlAccounts<Chainference>["inferenceRequestAccount"] =
-        myProgram.coder.accounts.decode(
-          // @ts-expect-error: we have to access a private field here.
-          myProgram.account.inferenceRequestAccount._idlAccount,
+      let request: IdlAccounts<Chainference>["inferenceRequestAccount"];
+      try {
+        request = chainference.coder.accounts.decode(
+          // @ts-expect-error: _idlAccount is a private field.
+          chainference.account.inferenceRequestAccount._idlAccount.name,
           account.accountInfo.data
         );
+      } catch (e) {
+        // Invalid account discriminator
+        if (
+          e instanceof Error &&
+          e.message.includes("Invalid account discriminator")
+        ) {
+          return;
+        }
+        throw e;
+      }
 
       console.log("Detected new inference request:");
       console.log(request);
@@ -130,7 +148,7 @@ cli.command("start").action(async () => {
 
       if (models.find((model) => model.id === request.model) !== undefined) {
         const sendPromptTo = `https://ask.chainference.app/${account.accountId.toBase58()}`;
-        myProgram.methods
+        await chainference.methods
           .lockRequest(sendPromptTo)
           .accounts({
             request: account.accountId,
