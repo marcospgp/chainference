@@ -38,7 +38,7 @@ cli.command("start").action(async () => {
     );
   }
 
-  const servers = await myProgram.account.serverAccount.all([
+  const existingServers = await myProgram.account.serverAccount.all([
     {
       memcmp: {
         offset: 8,
@@ -47,23 +47,25 @@ cli.command("start").action(async () => {
     },
   ]);
 
-  let serversLog = `Found ${servers.length} server${
-    servers.length === 1 ? "" : "s"
+  let serversLog = `Found ${existingServers.length} server${
+    existingServers.length === 1 ? "" : "s"
   } registered with current wallet`;
 
-  if (servers.length === 0) {
+  if (existingServers.length === 0) {
     serversLog += ".";
   } else {
-    serversLog += `: ${servers.map((s) => s.publicKey).join(", ")}.`;
+    serversLog += `: ${existingServers.map((s) => s.publicKey).join(", ")}.`;
   }
 
   console.log(serversLog);
 
-  if (servers.length > 0) {
-    console.log(`Closing existing server${servers.length === 1 ? "" : "s"}...`);
+  if (existingServers.length > 0) {
+    console.log(
+      `Closing existing server${existingServers.length === 1 ? "" : "s"}...`
+    );
 
     const transactions = await Promise.all(
-      servers.map((s) =>
+      existingServers.map((s) =>
         myProgram.methods
           .closeServer()
           .accounts({
@@ -85,7 +87,7 @@ cli.command("start").action(async () => {
 
   await helpers.waitForConfirmation(transaction);
 
-  const servers2 = await myProgram.account.serverAccount.all([
+  const servers = await myProgram.account.serverAccount.all([
     {
       memcmp: {
         offset: 8,
@@ -94,11 +96,11 @@ cli.command("start").action(async () => {
     },
   ]);
 
-  if (servers2.length !== 1) {
-    throw new Error(`Unexpected server account count: ${servers2.length}`);
+  if (servers.length !== 1) {
+    throw new Error(`Unexpected server account count: ${servers.length}`);
   }
 
-  const server = servers2[0]!;
+  const server = servers[0]!;
 
   console.log(`Created server with public key ${server.publicKey}`);
 
@@ -128,7 +130,13 @@ cli.command("start").action(async () => {
 
       if (models.find((model) => model.id === request.model) !== undefined) {
         const sendPromptTo = `https://ask.chainference.app/${account.accountId.toBase58()}`;
-        myProgram.methods.lockRequest(sendPromptTo);
+        myProgram.methods
+          .lockRequest(sendPromptTo)
+          .accounts({
+            request: account.accountId,
+            server: server.publicKey,
+          })
+          .rpc();
       }
     }
   );

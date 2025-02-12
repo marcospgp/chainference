@@ -220,6 +220,8 @@ pub struct LockRequestCtx<'info> {
     pub request: Account<'info, InferenceRequestAccount>,
     #[account(
         mut,
+        // Ensure the server account has an "owner" field containing the address of the owner
+        // account in this transaction.
         has_one = owner
     )]
     pub server: Account<'info, ServerAccount>,
