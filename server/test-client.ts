@@ -4,6 +4,7 @@ import { loadChainference } from "./chainference";
 import * as anchor from "@coral-xyz/anchor";
 import type { IdlAccounts } from "@coral-xyz/anchor";
 import type { Chainference } from "../solana/target/types/chainference";
+import nacl from "tweetnacl";
 
 type InferenceRequestAccount = anchor.ProgramAccount<
   IdlAccounts<Chainference>["inferenceRequestAccount"]
@@ -101,25 +102,17 @@ cli.action(async () => {
 
   const request = await waitForRequestToBeLocked(chainference, wallet);
 
-  // TODO: Fix signature logic
-  // const signature = await crypto.subtle.sign(
-  //   "Ed25519",
-  //   await crypto.subtle.importKey(
-  //     "pkcs8",
-  //     wallet.secretKey.slice(0, 32),
-  //     { name: "Ed25519", namedCurve: "NODE-ED25519" },
-  //     false,
-  //     ["sign"]
-  //   ),
-  //   request.publicKey.toBytes()
-  // );
+  const signature = nacl.sign.detached(
+    request.publicKey.toBytes(),
+    wallet.secretKey
+  );
 
   const response = await fetch(request.account.sendPromptTo, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       prompt: new TextEncoder().encode(userPrompt),
-      signature: "fake signature",
+      signature: signature,
     }),
   });
 

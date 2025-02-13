@@ -1,5 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import type { Chainference } from "../solana/target/types/chainference";
+import nacl from "tweetnacl";
 
 export function startServer(
   port: number,
@@ -20,28 +21,19 @@ export function startServer(
         return new Response("Not found", { status: 404 });
       }
 
-      // const request = await chainference.account.inferenceRequestAccount.fetch(
-      //   requestAccountAddress
-      // );
+      const request = await chainference.account.inferenceRequestAccount.fetch(
+        requestAccountAddress
+      );
 
-      // const key = await crypto.subtle.importKey(
-      //   "spki",
-      //   request.requester.toBytes(),
-      //   { name: "Ed25519", namedCurve: "NODE-ED25519" },
-      //   false,
-      //   ["verify"]
-      // );
+      const body = await req.json();
 
-      // const body = await req.json();
+      const signature = body["signature"];
 
-      // TODO: actually validate signature.
-      const isValid = true;
-      // const isValid = await crypto.subtle.verify(
-      //   "Ed25519",
-      //   key,
-      //   body["signature"],
-      //   request.requester.toBytes()
-      // );
+      const isValid = nacl.sign.detached.verify(
+        new TextEncoder().encode(requestAccountAddress),
+        signature,
+        request.requester.toBytes()
+      );
 
       if (!isValid) {
         return new Response(null, { status: 401 });
