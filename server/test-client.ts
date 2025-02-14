@@ -10,6 +10,8 @@ type InferenceRequestAccount = anchor.ProgramAccount<
   IdlAccounts<Chainference>["inferenceRequestAccount"]
 >;
 
+type ChatPrompt = { role: "assistant" | "user"; content: string }[];
+
 const cli = new Command();
 
 cli.action(async () => {
@@ -24,7 +26,7 @@ cli.action(async () => {
     )} SOL`
   );
 
-  await helpers.airdropSolIfBalanceBelow(
+  await helpers.airdropIfBalanceBelowSol(
     wallet.publicKey,
     1,
     chainference.provider.connection
@@ -63,7 +65,9 @@ cli.action(async () => {
     parseInt(prompt(`\nPlease select a model (1-${models.length}):`) || "1") -
     1;
 
-  console.log(`\nSelected model "${models[modelIndex]}"`);
+  const model = models[modelIndex]!;
+
+  console.log(`\nSelected model "${model}"\n`);
 
   const existingRequests =
     await chainference.account.inferenceRequestAccount.all([
@@ -76,67 +80,53 @@ cli.action(async () => {
     ]);
 
   if (existingRequests.length > 0) {
-    console.log(
+    logEphemeral(
       `Found ${existingRequests.length} existing request${
         existingRequests.length === 1 ? "" : "s"
-      }. Canceling it...`
+      }. Canceling ${existingRequests.length === 1 ? "it" : "them"}`
     );
 
     const cancel = await chainference.methods.cancelRequest().rpc();
     await helpers.waitForConfirmation(cancel);
+
+    logEphemeral("");
   }
 
-  console.log(`\nYou can now enter a prompt and submit by pressing enter.\n`);
+  console.log(`You can now write your prompt and submit by pressing enter.\n`);
 
-  const userPrompt = prompt("") ?? "";
-
-  const max_cost = 0.1 * anchor.web3.LAMPORTS_PER_SOL;
-
-  await chainference.methods
-    .requestInference(models[modelIndex] || "", new anchor.BN(max_cost))
-    .rpc();
-
-  console.log(
-    `\nPrompt submitted. Waiting for a server to lock the request...`
+  const max_cost = new anchor.BN(0.1).mul(
+    new anchor.BN(anchor.web3.LAMPORTS_PER_SOL)
   );
 
-  const request = await waitForRequestToBeLocked(chainference, wallet);
+  const messages: ChatPrompt = [];
 
-  console.log(
-    `Request was locked. Sending prompt to "${request.account.sendPromptTo}"...`
-  );
+  const promptPrefix = "> ";
+  process.stdout.write(promptPrefix);
 
-  const signature = nacl.sign.detached(
-    new TextEncoder().encode(request.publicKey.toBase58()),
-    wallet.secretKey
-  );
+  for await (const input of console) {
+    messages.push({
+      role: "user",
+      content: input,
+    });
 
-  const body = {
-    prompt: userPrompt,
-    signature: Buffer.from(signature).toString("hex"),
-  };
+    const reader = (
+      await promptModel(chainference, wallet, model, messages, max_cost)
+    ).getReader();
+    let response = "";
 
-  const response = await fetch(request.account.sendPromptTo, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      response += "";
+      process.stdout.write(value);
+    }
 
-  if (!response.ok) {
-    throw new Error(response.statusText);
-  }
+    messages.push({
+      role: "assistant",
+      content: response,
+    });
 
-  const reader = response.body!.getReader();
-  const decoder = new TextDecoder();
-
-  console.log();
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    const chunk = decoder.decode(value, { stream: true });
-    process.stdout.write(chunk);
+    process.stdout.write(promptPrefix);
   }
 });
 
@@ -168,10 +158,6 @@ async function waitForRequestToBeLocked(
     await new Promise((resolve) => setTimeout(resolve, timeoutMs));
   }
 
-  console.log(
-    `Found request account on chain with address "${request.publicKey}"...`
-  );
-
   while (request.account.sendPromptTo === "") {
     await new Promise((resolve) => setTimeout(resolve, timeoutMs));
 
@@ -184,4 +170,94 @@ async function waitForRequestToBeLocked(
   }
 
   return request;
+}
+
+async function promptModel(
+  chainference: anchor.Program<Chainference>,
+  wallet: anchor.web3.Keypair,
+  model: string,
+  messages: ChatPrompt,
+  max_cost: anchor.BN
+) {
+  console.log();
+  logEphemeral("Submitting inference request to chain");
+
+  await chainference.methods.requestInference(model, max_cost).rpc();
+
+  logEphemeral("Waiting for request to be locked by a server");
+
+  const request = await waitForRequestToBeLocked(chainference, wallet);
+
+  logEphemeral("Request locked. Sending prompt...");
+
+  const signature = nacl.sign.detached(
+    new TextEncoder().encode(request.publicKey.toBase58()),
+    wallet.secretKey
+  );
+
+  const body = {
+    messages,
+    signature: Buffer.from(signature).toString("hex"),
+  };
+
+  const response = await fetch(request.account.sendPromptTo, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(response.statusText);
+  }
+
+  logEphemeral("");
+
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+
+  return new ReadableStream<string>({
+    async pull(controller) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+
+        const response = JSON.parse(chunk);
+
+        if (response.done) {
+          break;
+        }
+
+        controller.enqueue(response.message.content);
+      }
+    },
+  });
+}
+
+let clearLastEphemeralLine: (() => void) | null = null;
+function logEphemeral(message: string) {
+  if (clearLastEphemeralLine !== null) {
+    clearLastEphemeralLine();
+  }
+
+  if (message === "") {
+    return;
+  }
+
+  process.stdout.write("\x1B[?25l"); // Hide cursor
+  let dots = 0;
+  const interval = setInterval(() => {
+    process.stdout.clearLine(0);
+    process.stdout.cursorTo(0);
+    dots = (dots + 1) % 4;
+    process.stdout.write(`${message}${".".repeat(dots)}`);
+  }, 300);
+
+  clearLastEphemeralLine = () => {
+    clearInterval(interval);
+    process.stdout.clearLine(0);
+    process.stdout.cursorTo(0);
+    process.stdout.write("\x1B[?25h"); // Show cursor
+  };
 }

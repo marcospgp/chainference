@@ -1,8 +1,7 @@
 import * as helpers from "./helpers";
 import { Command } from "commander";
 import { loadChainference } from "./chainference";
-import path from "path";
-import { loadModels } from "./models";
+import * as anchor from "@coral-xyz/anchor";
 import type { IdlAccounts } from "@coral-xyz/anchor";
 import type { Chainference } from "../solana/target/types/chainference";
 import { startServer } from "./server";
@@ -52,7 +51,7 @@ cli.action(async () => {
   );
 
   if (!isProd) {
-    await helpers.airdropSolIfBalanceBelow(
+    await helpers.airdropIfBalanceBelowSol(
       wallet.publicKey,
       1,
       chainference.provider.connection
@@ -99,12 +98,14 @@ cli.action(async () => {
     await Promise.all(transactions.map((t) => helpers.waitForConfirmation(t)));
   }
 
-  const models = loadModels(path.join(__dirname, "models.json"));
-
-  console.log(`Creating new server with models:`);
-  models.forEach((x) => console.log(x));
-
-  const transaction = await chainference.methods.addServer(models).rpc();
+  const transaction = await chainference.methods
+    .addServer([
+      {
+        id: model,
+        price: new anchor.BN(price),
+      },
+    ])
+    .rpc();
 
   await helpers.waitForConfirmation(transaction);
 
@@ -162,9 +163,10 @@ cli.action(async () => {
         return;
       }
 
-      console.log("Detected new not-yet-locked inference request.");
-
-      if (models.find((model) => model.id === request.model) !== undefined) {
+      if (model === request.model) {
+        console.log(
+          "Detected new not-yet-locked inference request. Locking it..."
+        );
         const sendPromptTo = `https://ask.chainference.app/${account.accountId.toBase58()}`;
         await chainference.methods
           .lockRequest(sendPromptTo)
@@ -173,6 +175,10 @@ cli.action(async () => {
             server: server.publicKey,
           })
           .rpc();
+      } else {
+        console.log(
+          "Detected new not-yet-locked inference request, but it has an incompatible model."
+        );
       }
     }
   );

@@ -49,7 +49,7 @@ async function airdropSol(
   await waitForConfirmation(signature);
 }
 
-export async function airdropSolIfBalanceBelow(
+export async function airdropIfBalanceBelowSol(
   publicKey: anchor.web3.PublicKey,
   minBalanceSol: number,
   connection: anchor.web3.Connection
@@ -61,9 +61,9 @@ export async function airdropSolIfBalanceBelow(
   }
 
   console.log(
-    `Wallet balance below ${minBalanceSol} SOL. Airdropping that amount...`
+    `Wallet balance below ${minBalanceSol} SOL. Airdropping double that amount...`
   );
-  await airdropSol(publicKey, minBalanceSol, connection);
+  await airdropSol(publicKey, minBalanceSol * 2, connection);
 
   console.log(
     `New wallet balance: ${await getBalanceSol(publicKey, connection)} SOL`

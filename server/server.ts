@@ -25,11 +25,9 @@ export function startServer(
       );
 
       const body = await req.json();
-      const signature = body["signature"];
-      const messages = JSON.parse(body["messages"]);
 
-      console.log(`Received messages:`);
-      console.log(JSON.stringify(messages, null, 4));
+      const signature = body["signature"];
+      const messages = body["messages"];
 
       const isValid = nacl.sign.detached.verify(
         new TextEncoder().encode(requestAccountAddress),
@@ -38,12 +36,14 @@ export function startServer(
       );
 
       if (!isValid) {
-        console.log(`Invalid signature.`);
+        console.log(`Received prompt request with invalid signature.`);
 
         return new Response(null, { status: 401 });
       }
 
-      console.log(`Signature is valid. Sending response...`);
+      console.log(
+        `Received prompt request with valid signature. Sending response...`
+      );
 
       const ollamaStream = await fetch("http://localhost:11434/api/chat", {
         method: "POST",
