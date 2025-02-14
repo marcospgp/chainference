@@ -18,12 +18,8 @@
     svg {
       display: block;
       width: auto;
-      height: 85px;
-
-      path {
-        stroke: var(--color-primary-highlight);
-        stroke-width: 1px;
-      }
+      height: 45px;
+      color: var(--color-primary-highlight);
     }
 
     h1 {
