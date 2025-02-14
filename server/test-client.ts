@@ -188,7 +188,7 @@ async function promptModel(
 
   const request = await waitForRequestToBeLocked(chainference, wallet);
 
-  logEphemeral("Request locked. Sending prompt...");
+  logEphemeral("Request locked. Sending prompt");
 
   const signature = nacl.sign.detached(
     new TextEncoder().encode(request.publicKey.toBase58()),
