@@ -9,11 +9,31 @@ import { startServer } from "./server";
 
 const cli = new Command();
 
-cli.action(cli.help).option("--prod", "Run against Solana mainnet.");
+cli
+  .requiredOption(
+    "--model <model>,<price>",
+    "The model name in ollama format and its price per 1M output tokens (in lamports). Example: --model llama3.1,400000"
+  )
+  .option("--prod", "Run against Solana mainnet instead of default devnet.")
+  .helpOption("--help")
+  .configureOutput({
+    writeErr: (str) => {
+      console.error(str);
+      cli.outputHelp();
+      process.exit(1);
+    },
+  });
 
-cli.command("start").action(async () => {
+cli.action(async () => {
   const options = cli.opts();
   const isProd = options["prod"] || false;
+  const modelArg: string = options["model"];
+
+  const [model, price, ...rest] = modelArg.split(",") as [string, string];
+
+  if (rest.length > 0) {
+    throw new Error("Invalid model argument.");
+  }
 
   console.log(
     `Starting chainference server (${
@@ -111,7 +131,7 @@ cli.command("start").action(async () => {
 
   // 3819 meaning "chai" as in chainference.
   const port = 3819;
-  startServer(port, chainference);
+  startServer(port, chainference, model, price);
 
   console.log(`Listening for inference requests...`);
 

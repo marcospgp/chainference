@@ -4,18 +4,17 @@ import nacl from "tweetnacl";
 
 export function startServer(
   port: number,
-  chainference: anchor.Program<Chainference>
+  chainference: anchor.Program<Chainference>,
+  model: string,
+  price: string
 ) {
   Bun.serve({
     development: false,
     port,
     async fetch(req) {
+      // Expect request path to be in the format "/<inference-request-account-address>".
       const url = new URL(req.url);
       const requestAccountAddress = url.pathname.slice(1);
-
-      if (requestAccountAddress === "lalala") {
-        return new Response("Bernardo a hoe");
-      }
 
       if (requestAccountAddress === "") {
         return new Response("Not found", { status: 404 });
@@ -26,10 +25,11 @@ export function startServer(
       );
 
       const body = await req.json();
+      const signature = body["signature"];
+      const messages = JSON.parse(body["messages"]);
 
-      const { signature, prompt }: { signature: string; prompt: string } = body;
-
-      console.log(`Received prompt: "${prompt}"`);
+      console.log(`Received messages:`);
+      console.log(JSON.stringify(messages, null, 4));
 
       const isValid = nacl.sign.detached.verify(
         new TextEncoder().encode(requestAccountAddress),
@@ -45,19 +45,38 @@ export function startServer(
 
       console.log(`Signature is valid. Sending response...`);
 
-      const stream = new ReadableStream({
-        async pull(controller) {
-          for (let i = 0; i < 100; i++) {
-            controller.enqueue(new TextEncoder().encode(`${i}, `));
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          }
+      const ollamaStream = await fetch("http://localhost:11434/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          messages,
+        }),
+      });
 
-          controller.enqueue(`done!`);
-          controller.close();
+      if (!ollamaStream.ok) {
+        throw new Error(ollamaStream.statusText);
+      }
+
+      const reader = ollamaStream.body!.getReader();
+      const decoder = new TextDecoder();
+
+      const responseStream = new ReadableStream({
+        async pull(controller) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              controller.close();
+              break;
+            }
+
+            const chunk = decoder.decode(value, { stream: true });
+            controller.enqueue(chunk);
+          }
         },
       });
 
-      return new Response(stream, {
+      return new Response(responseStream, {
         headers: {
           "content-type": "text/event-stream",
           "cache-control": "no-cache",
