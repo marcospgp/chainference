@@ -96,6 +96,10 @@ export function startServer(
             const lines = chunk.split("\n");
 
             for (const line of lines) {
+              if (line.trim() === "") {
+                continue;
+              }
+
               const obj = JSON.parse(line);
 
               if (obj.done) {
