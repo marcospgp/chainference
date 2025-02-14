@@ -92,7 +92,7 @@ cli.action(async () => {
     logEphemeral("");
   }
 
-  console.log(`You can now write your prompt and submit by pressing enter.\n`);
+  console.log(`You can now write your prompt and submit by pressing enter.`);
 
   const max_cost = new anchor.BN(0.1).mul(
     new anchor.BN(anchor.web3.LAMPORTS_PER_SOL)
@@ -100,7 +100,7 @@ cli.action(async () => {
 
   const messages: ChatPrompt = [];
 
-  const promptPrefix = "> ";
+  const promptPrefix = "\n> ";
   process.stdout.write(promptPrefix);
 
   for await (const input of console) {
@@ -237,6 +237,8 @@ async function promptModel(
 
         controller.enqueue(response.message.content);
       }
+
+      controller.close();
     },
   });
 }

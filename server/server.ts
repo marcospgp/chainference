@@ -2,6 +2,12 @@ import * as anchor from "@coral-xyz/anchor";
 import type { Chainference } from "../solana/target/types/chainference";
 import nacl from "tweetnacl";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "*",
+  "Access-Control-Allow-Headers": "*",
+};
+
 export function startServer(
   port: number,
   chainference: anchor.Program<Chainference>,
@@ -12,6 +18,13 @@ export function startServer(
     development: false,
     port,
     async fetch(req) {
+      if (req.method === "OPTIONS") {
+        return new Response(null, {
+          status: 204,
+          headers: corsHeaders,
+        });
+      }
+
       // Expect request path to be in the format "/<inference-request-account-address>".
       const url = new URL(req.url);
       const requestAccountAddress = url.pathname.slice(1);
@@ -20,18 +33,19 @@ export function startServer(
         return new Response("Not found", { status: 404 });
       }
 
-      const request = await chainference.account.inferenceRequestAccount.fetch(
-        requestAccountAddress
-      );
-
       let body: any;
       try {
         body = await req.json();
       } catch (e) {
         console.error("Failed to parse request body into JSON:");
-        console.error(req.body?.toString());
+        console.error(JSON.stringify(req, null, 4));
+        console.error(req.body);
         throw e;
       }
+
+      const request = await chainference.account.inferenceRequestAccount.fetch(
+        requestAccountAddress
+      );
 
       const signature = body["signature"];
       const messages = body["messages"];
@@ -65,7 +79,7 @@ export function startServer(
         throw new Error(ollamaStream.statusText);
       }
 
-      const reader = ollamaStream.body!.getReader();
+      const ollamaReader = ollamaStream.body!.getReader();
       const decoder = new TextDecoder();
 
       const responseStream = new ReadableStream({
@@ -73,21 +87,27 @@ export function startServer(
         type: "direct",
         async pull(controller) {
           while (true) {
-            const { done, value } = await reader.read();
+            const { done, value } = await ollamaReader.read();
             if (done) {
-              controller.close();
               break;
             }
 
             const chunk = decoder.decode(value, { stream: true });
-            // @ts-expect-error
-            controller.write(chunk);
+            const lines = chunk.split("\n");
+
+            for (const line of lines) {
+              // @ts-expect-error
+              controller.write(line);
+            }
           }
+
+          controller.close();
         },
       });
 
       return new Response(responseStream, {
         headers: {
+          ...corsHeaders,
           "content-type": "text/event-stream",
           "cache-control": "no-cache",
           connection: "keep-alive",
