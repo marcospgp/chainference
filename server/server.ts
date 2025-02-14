@@ -27,17 +27,23 @@ export function startServer(
 
       const body = await req.json();
 
-      const signature = body["signature"];
+      const { signature, prompt }: { signature: string; prompt: string } = body;
+
+      console.log(`Received prompt: "${prompt}"`);
 
       const isValid = nacl.sign.detached.verify(
         new TextEncoder().encode(requestAccountAddress),
-        signature,
+        Buffer.from(signature, "hex"),
         request.requester.toBytes()
       );
 
       if (!isValid) {
+        console.log(`Invalid signature.`);
+
         return new Response(null, { status: 401 });
       }
+
+      console.log(`Signature is valid. Sending response...`);
 
       const stream = new ReadableStream({
         async pull(controller) {

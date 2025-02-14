@@ -102,19 +102,29 @@ cli.action(async () => {
 
   const request = await waitForRequestToBeLocked(chainference, wallet);
 
+  console.log(
+    `Request was locked. Sending prompt to "${request.account.sendPromptTo}"...`
+  );
+
   const signature = nacl.sign.detached(
-    request.publicKey.toBytes(),
+    new TextEncoder().encode(request.publicKey.toBase58()),
     wallet.secretKey
   );
+
+  const body = {
+    prompt: userPrompt,
+    signature: Buffer.from(signature).toString("hex"),
+  };
 
   const response = await fetch(request.account.sendPromptTo, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      prompt: new TextEncoder().encode(userPrompt),
-      signature: signature,
-    }),
+    body: JSON.stringify(body),
   });
+
+  if (!response.ok) {
+    throw new Error(response.statusText);
+  }
 
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
@@ -134,7 +144,8 @@ cli.parse();
 
 async function waitForRequestToBeLocked(
   chainference: anchor.Program<Chainference>,
-  wallet: anchor.web3.Keypair
+  wallet: anchor.web3.Keypair,
+  timeoutMs: number = 100
 ): Promise<InferenceRequestAccount> {
   let request: InferenceRequestAccount;
 
@@ -154,7 +165,7 @@ async function waitForRequestToBeLocked(
       break;
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, timeoutMs));
   }
 
   console.log(
@@ -162,7 +173,7 @@ async function waitForRequestToBeLocked(
   );
 
   while (request.account.sendPromptTo === "") {
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, timeoutMs));
 
     request = {
       account: await chainference.account.inferenceRequestAccount.fetch(

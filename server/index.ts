@@ -138,13 +138,11 @@ cli.command("start").action(async () => {
         throw e;
       }
 
-      console.log("Detected new inference request:");
-      console.log(request);
-
       if (request.lockedBy !== null) {
-        console.log(`Request already locked. Skipping...`);
         return;
       }
+
+      console.log("Detected new not-yet-locked inference request.");
 
       if (models.find((model) => model.id === request.model) !== undefined) {
         const sendPromptTo = `https://ask.chainference.app/${account.accountId.toBase58()}`;
