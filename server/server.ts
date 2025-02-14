@@ -29,21 +29,6 @@ export function startServer(
       const url = new URL(req.url);
       const requestAccountAddress = url.pathname.slice(1);
 
-      // Handle OPTIONS preflight request
-      if (req.method === 'OPTIONS') {
-        return new Response(null, {
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
-          },
-        });
-      }
-
-      if (requestAccountAddress === 'lalala') {
-        return new Response('Bernardo a hoe');
-      }
-
       if (requestAccountAddress === '') {
         return new Response('Not found', { status: 404 });
       }
