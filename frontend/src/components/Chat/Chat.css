@@ -322,3 +322,10 @@
 .loader-container:hover .cancel-icon {
   opacity: 1;
 }
+
+.clickable {
+  cursor: pointer;
+  &:hover {
+    background-color: var(--color-primary-half);
+  }
+}

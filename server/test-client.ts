@@ -1,21 +1,21 @@
-import { Command } from "commander";
-import * as helpers from "./helpers";
-import { loadChainference } from "./chainference";
-import * as anchor from "@coral-xyz/anchor";
-import type { IdlAccounts } from "@coral-xyz/anchor";
-import type { Chainference } from "../solana/target/types/chainference";
-import nacl from "tweetnacl";
+import { Command } from 'commander';
+import * as helpers from './helpers';
+import { loadChainference } from './chainference';
+import * as anchor from '@coral-xyz/anchor';
+import type { IdlAccounts } from '@coral-xyz/anchor';
+import type { Chainference } from '../solana/target/types/chainference';
+import nacl from 'tweetnacl';
 
 type InferenceRequestAccount = anchor.ProgramAccount<
-  IdlAccounts<Chainference>["inferenceRequestAccount"]
+  IdlAccounts<Chainference>['inferenceRequestAccount']
 >;
 
-type ChatPrompt = { role: "assistant" | "user"; content: string }[];
+type ChatPrompt = { role: 'assistant' | 'user'; content: string }[];
 
 const cli = new Command();
 
 cli.action(async () => {
-  const wallet = helpers.loadOrCreateWallet("client-wallet.json");
+  const wallet = helpers.loadOrCreateWallet('client-wallet.json');
 
   const chainference = await loadChainference(wallet);
 
@@ -40,7 +40,7 @@ cli.action(async () => {
   const servers = await chainference.account.serverAccount.all();
 
   console.log(
-    `Found ${servers.length} server${servers.length === 1 ? "" : "s"}.`
+    `Found ${servers.length} server${servers.length === 1 ? '' : 's'}.`
   );
 
   if (servers.length === 0) {
@@ -62,7 +62,7 @@ cli.action(async () => {
   models.forEach((x, index) => console.log(`${index + 1}. ${x}`));
 
   const modelIndex =
-    parseInt(prompt(`\nPlease select a model (1-${models.length}):`) || "1") -
+    parseInt(prompt(`\nPlease select a model (1-${models.length}):`) || '1') -
     1;
 
   const model = models[modelIndex]!;
@@ -82,14 +82,14 @@ cli.action(async () => {
   if (existingRequests.length > 0) {
     logEphemeral(
       `Found ${existingRequests.length} existing request${
-        existingRequests.length === 1 ? "" : "s"
-      }. Canceling ${existingRequests.length === 1 ? "it" : "them"}`
+        existingRequests.length === 1 ? '' : 's'
+      }. Canceling ${existingRequests.length === 1 ? 'it' : 'them'}`
     );
 
     const cancel = await chainference.methods.cancelRequest().rpc();
     await helpers.waitForConfirmation(cancel);
 
-    logEphemeral("");
+    logEphemeral('');
   }
 
   console.log(`You can now write your prompt and submit by pressing enter.`);
@@ -100,29 +100,29 @@ cli.action(async () => {
 
   const messages: ChatPrompt = [];
 
-  const promptPrefix = "\n> ";
+  const promptPrefix = '\n> ';
   process.stdout.write(promptPrefix);
 
   for await (const input of console) {
     messages.push({
-      role: "user",
+      role: 'user',
       content: input,
     });
 
     const reader = (
       await promptModel(chainference, wallet, model, messages, max_cost)
     ).getReader();
-    let response = "";
+    let response = '';
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      response += "";
+      response += '';
       process.stdout.write(value);
     }
 
     messages.push({
-      role: "assistant",
+      role: 'assistant',
       content: response,
     });
 
@@ -158,7 +158,7 @@ async function waitForRequestToBeLocked(
     await new Promise((resolve) => setTimeout(resolve, timeoutMs));
   }
 
-  while (request.account.sendPromptTo === "") {
+  while (request.account.sendPromptTo === '') {
     await new Promise((resolve) => setTimeout(resolve, timeoutMs));
 
     request = {
@@ -180,15 +180,15 @@ async function promptModel(
   max_cost: anchor.BN
 ) {
   console.log();
-  logEphemeral("Submitting inference request to chain");
+  logEphemeral('Submitting inference request to chain');
 
   await chainference.methods.requestInference(model, max_cost).rpc();
 
-  logEphemeral("Waiting for request to be locked by a server");
+  logEphemeral('Waiting for request to be locked by a server');
 
   const request = await waitForRequestToBeLocked(chainference, wallet);
 
-  logEphemeral("Request locked. Sending prompt");
+  logEphemeral('Request locked. Sending prompt');
 
   const signature = nacl.sign.detached(
     new TextEncoder().encode(request.publicKey.toBase58()),
@@ -197,12 +197,12 @@ async function promptModel(
 
   const body = {
     messages,
-    signature: Buffer.from(signature).toString("hex"),
+    signature: Buffer.from(signature).toString('hex'),
   };
 
   const response = await fetch(request.account.sendPromptTo, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
 
@@ -210,7 +210,7 @@ async function promptModel(
     throw new Error(response.statusText);
   }
 
-  logEphemeral("");
+  logEphemeral('');
 
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
@@ -239,23 +239,23 @@ function logEphemeral(message: string) {
     clearLastEphemeralLine();
   }
 
-  if (message === "") {
+  if (message === '') {
     return;
   }
 
-  process.stdout.write("\x1B[?25l"); // Hide cursor
+  process.stdout.write('\x1B[?25l'); // Hide cursor
   let dots = 0;
   const interval = setInterval(() => {
     process.stdout.clearLine(0);
     process.stdout.cursorTo(0);
     dots = (dots + 1) % 4;
-    process.stdout.write(`${message}${".".repeat(dots)}`);
+    process.stdout.write(`${message}${'.'.repeat(dots)}`);
   }, 300);
 
   clearLastEphemeralLine = () => {
     clearInterval(interval);
     process.stdout.clearLine(0);
     process.stdout.cursorTo(0);
-    process.stdout.write("\x1B[?25h"); // Show cursor
+    process.stdout.write('\x1B[?25h'); // Show cursor
   };
 }

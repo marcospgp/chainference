@@ -1,17 +1,17 @@
-import { useState, useEffect, useRef } from "react";
-import type { Program } from "@coral-xyz/anchor";
-import type { Chainference } from "../../../solana/target/types/chainference";
+import { useState, useEffect, useRef } from 'react';
+import type { Program } from '@coral-xyz/anchor';
+import type { Chainference } from '../../../solana/target/types/chainference';
 import {
   decodeAccount,
   fetchInitialAccounts,
   type DecodedAccount,
-} from "../utils/chainferenceProgram";
-import { PublicKey } from "@solana/web3.js";
+} from '../utils/chainferenceProgram';
+import { PublicKey } from '@solana/web3.js';
 
 interface AccountWithPubkey {
   pubkey: PublicKey;
-  type: DecodedAccount["type"];
-  data: DecodedAccount["data"];
+  type: DecodedAccount['type'];
+  data: DecodedAccount['data'];
 }
 
 const useSolanaProgramListener = (program: Program<Chainference>) => {
@@ -57,7 +57,7 @@ const useSolanaProgramListener = (program: Program<Chainference>) => {
                 });
               }
             } catch (error) {
-              console.error("Failed to decode updated account:", error);
+              console.error('Failed to decode updated account:', error);
             }
           }
         }
@@ -88,7 +88,7 @@ const useSolanaProgramListener = (program: Program<Chainference>) => {
           // Add pubkeys to the accounts
           const accountsWithPubkeys = accounts.map((account) => {
             const key =
-              account.type === "serverAccount"
+              account.type === 'serverAccount'
                 ? account.data.owner.toBase58()
                 : account.data.requester.toBase58();
             const pubkey = pubkeyMap.get(key);
@@ -101,8 +101,8 @@ const useSolanaProgramListener = (program: Program<Chainference>) => {
           setState(accountsWithPubkeys);
         }
       } catch (error: any) {
-        console.error("Failed to fetch initial accounts:", error);
-        if (error.message?.includes("429")) {
+        console.error('Failed to fetch initial accounts:', error);
+        if (error.message?.includes('429')) {
           if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
           fetchTimeoutRef.current = setTimeout(loadInitialAccounts, 5000);
         }
@@ -137,7 +137,7 @@ const useSolanaProgramListener = (program: Program<Chainference>) => {
               });
             }
           } catch (error) {
-            console.error("Failed to decode program account:", error);
+            console.error('Failed to decode program account:', error);
           }
         }
       );
