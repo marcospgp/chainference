@@ -223,7 +223,13 @@ async function promptModel(
 
         const chunk = decoder.decode(value, { stream: true });
 
-        const response = JSON.parse(chunk);
+        let response: any;
+        try {
+          response = JSON.parse(chunk);
+        } catch (e) {
+          console.error(`Unable to parse chunk into JSON: ${chunk}`);
+          throw e;
+        }
 
         if (response.done) {
           break;

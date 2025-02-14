@@ -24,7 +24,14 @@ export function startServer(
         requestAccountAddress
       );
 
-      const body = await req.json();
+      let body: any;
+      try {
+        body = await req.json();
+      } catch (e) {
+        console.error("Failed to parse request body into JSON:");
+        console.error(req.body?.toString());
+        throw e;
+      }
 
       const signature = body["signature"];
       const messages = body["messages"];
@@ -62,6 +69,8 @@ export function startServer(
       const decoder = new TextDecoder();
 
       const responseStream = new ReadableStream({
+        // @ts-expect-error
+        type: "direct",
         async pull(controller) {
           while (true) {
             const { done, value } = await reader.read();
@@ -71,7 +80,8 @@ export function startServer(
             }
 
             const chunk = decoder.decode(value, { stream: true });
-            controller.enqueue(chunk);
+            // @ts-expect-error
+            controller.write(chunk);
           }
         },
       });
