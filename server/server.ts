@@ -96,8 +96,16 @@ export function startServer(
             const lines = chunk.split("\n");
 
             for (const line of lines) {
+              const obj = JSON.parse(line);
+
+              if (obj.done) {
+                break;
+              }
+
+              const content = obj.message.content;
+
               // @ts-expect-error
-              controller.write(line);
+              controller.write(content);
             }
           }
 
