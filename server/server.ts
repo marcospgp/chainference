@@ -1,11 +1,11 @@
-import * as anchor from '@coral-xyz/anchor';
-import type { Chainference } from '../solana/target/types/chainference';
-import nacl from 'tweetnacl';
+import * as anchor from "@coral-xyz/anchor";
+import type { Chainference } from "../solana/target/types/chainference";
+import nacl from "tweetnacl";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': '*',
-  'Access-Control-Allow-Headers': '*',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "*",
+  "Access-Control-Allow-Headers": "*",
 };
 
 export function startServer(
@@ -18,7 +18,7 @@ export function startServer(
     development: false,
     port,
     async fetch(req) {
-      if (req.method === 'OPTIONS') {
+      if (req.method === "OPTIONS") {
         return new Response(null, {
           status: 204,
           headers: corsHeaders,
@@ -29,15 +29,15 @@ export function startServer(
       const url = new URL(req.url);
       const requestAccountAddress = url.pathname.slice(1);
 
-      if (requestAccountAddress === '') {
-        return new Response('Not found', { status: 404 });
+      if (requestAccountAddress === "") {
+        return new Response("Not found", { status: 404 });
       }
 
       let body: any;
       try {
         body = await req.json();
       } catch (e) {
-        console.error('Failed to parse request body into JSON:');
+        console.error("Failed to parse request body into JSON:");
         console.error(JSON.stringify(req, null, 4));
         console.error(req.body);
         throw e;
@@ -47,12 +47,12 @@ export function startServer(
         requestAccountAddress
       );
 
-      const signature = body['signature'];
-      const messages = body['messages'];
+      const signature = body["signature"];
+      const messages = body["messages"];
 
       const isValid = nacl.sign.detached.verify(
         new TextEncoder().encode(requestAccountAddress),
-        Buffer.from(signature, 'hex'),
+        Buffer.from(signature, "hex"),
         request.requester.toBytes()
       );
 
@@ -66,9 +66,9 @@ export function startServer(
         `Received prompt request with valid signature. Sending response...`
       );
 
-      const ollamaStream = await fetch('http://localhost:11434/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const ollamaStream = await fetch("http://localhost:11434/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model,
           messages,
@@ -84,7 +84,7 @@ export function startServer(
 
       const responseStream = new ReadableStream({
         // @ts-expect-error
-        type: 'direct',
+        type: "direct",
         async pull(controller) {
           while (true) {
             const { done, value } = await ollamaReader.read();
@@ -93,10 +93,10 @@ export function startServer(
             }
 
             const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
+            const lines = chunk.split("\n");
 
             for (const line of lines) {
-              if (line.trim() === '') {
+              if (line.trim() === "") {
                 continue;
               }
 
@@ -120,9 +120,9 @@ export function startServer(
       return new Response(responseStream, {
         headers: {
           ...corsHeaders,
-          'content-type': 'text/event-stream',
-          'cache-control': 'no-cache',
-          connection: 'keep-alive',
+          "content-type": "text/event-stream",
+          "cache-control": "no-cache",
+          connection: "keep-alive",
         },
         status: 200,
       });
