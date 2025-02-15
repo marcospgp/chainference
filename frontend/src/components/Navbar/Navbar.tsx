@@ -3,8 +3,18 @@ import "./Navbar.css";
 // import { Button } from "@mantine/core";
 
 import logo from "../../assets/logo.svg" with { type: "text" };
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { BaseWalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { memo } from "react";
+
+const LABELS = {
+  'change-wallet': 'Change wallet',
+  connecting: 'Connecting...',
+  'copy-address': 'Copy address',
+  copied: 'Copied',
+  disconnect: 'Disconnect',
+  'has-wallet': 'Connect wallet (devnet)',
+  'no-wallet': 'Connect wallet (devnet)',
+} as const;
 
 const Navbar = () => {
   return (
@@ -16,7 +26,7 @@ const Navbar = () => {
           <div dangerouslySetInnerHTML={{ __html: logo }}></div>
         </a>
       <div className="wallet">
-        <WalletMultiButton />
+        <BaseWalletMultiButton labels={LABELS} />
       </div>
     </div>
   );

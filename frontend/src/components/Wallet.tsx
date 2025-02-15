@@ -45,6 +45,13 @@ import { clusterApiUrl } from "@solana/web3.js";
 
 import "@solana/wallet-adapter-react-ui/styles.css";
 
+import { useWallet } from "@solana/wallet-adapter-react";
+
+const { select, connect, connected } = useWallet();
+
+// TODO: Add global getAnchorWallet here that if there is no logged in wallet uses the wallet from
+// the URL query parameter (if present)
+
 export const Wallet: FC<{ children: React.ReactNode }> = ({ children }) => {
   const network = WalletAdapterNetwork.Devnet;
   const endpoint = useMemo(() => clusterApiUrl(network), [network]);
