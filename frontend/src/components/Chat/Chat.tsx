@@ -144,7 +144,11 @@ export default function Chat() {
       // show loader while waiting for request to be locked
       setChatMessages((messages) => [
         ...messages,
-        { role: "assistant", content: '<div class="loader"></div>' },
+        {
+          role: "assistant",
+          content:
+            '<div class="loader"></div><br><i>Creating on-chain inference request...</i>',
+        },
       ]);
 
       // Create inference request
@@ -162,6 +166,15 @@ export default function Chat() {
       await createInferenceRequest(chainference, state.model, state.maxCost);
       console.log("Inference request created successfully");
 
+      setChatMessages((messages) => [
+        ...messages.slice(0, messages.length - 1),
+        {
+          role: "assistant",
+          content:
+            '<div class="loader"></div><br><i>Waiting for a server to lock the request...</i>',
+        },
+      ]);
+
       // Wait for request to be locked by a server
       console.log("Waiting for request to be locked...");
       const request = await waitForRequestToBeLocked(chainference, 100);
@@ -170,17 +183,37 @@ export default function Chat() {
       // Send prompt and handle streaming response
       console.log("Starting to send prompt and handle streaming...");
 
+      setChatMessages((messages) => [
+        ...messages.slice(0, messages.length - 1),
+        {
+          role: "assistant",
+          content:
+            '<div class="loader"></div><br><i>Request locked. Sending prompt to server...</i>',
+        },
+      ]);
+
       await sendPrompt(request, messagesToSend, (chunk) => {
         setChatMessages((messages) =>
           messages.map((msg, index) =>
             index === messages.length - 1
-              ? msg.content === '<div class="loader"></div>'
+              ? msg.content.includes('<div class="loader"></div>')
                 ? { ...msg, content: chunk }
                 : { ...msg, content: msg.content + chunk }
               : msg
           )
         );
       });
+
+      // At the end of a response, add a link to the inference request.
+      const url = `<br><br>[See on Solana Explorer](https://explorer.solana.com/address/${request.publicKey.toBase58()}?cluster=devnet)`;
+
+      setChatMessages((messages) =>
+        messages.map((msg, index) =>
+          index === messages.length - 1
+            ? { ...msg, content: msg.content + url }
+            : msg
+        )
+      );
     } catch (error) {
       console.error("Error in chat:", error);
       // Remove any pending response messages
