@@ -17,6 +17,15 @@ Run the server with `bun index.ts`.
 
 Run the test client with `bun test-client.ts`.
 
+When serving real requests, it is recommended to run the server such that it will restart automatically on failure, with a command like:
+
+```bash
+while true; do                                                                                                             git:main
+  bun index.ts --model llama3.1,400000
+  echo "Process crashed with exit code $?. Restarting..." >&2
+done
+```
+
 ## Exposing a local server to the internet
 
 You can expose a local server to the internet through [Cloudflare tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/).
