@@ -55,6 +55,7 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showLoader, setShowLoader] = useState(false);
 
   const programState = useSolanaProgramListener(program);
   const wallet = useWallet();
@@ -138,6 +139,12 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
       await createInferenceRequest(program, state.model, state.maxCost);
       console.log('Inference request created successfully');
 
+      // show loader while waiting for request to be locked
+      setChatMessages((messages) => [
+        ...messages,
+        { role: 'assistant', content: '<div class="loader"></div>' },
+      ]);
+
       // Wait for request to be locked by a server
       console.log('Waiting for request to be locked...');
       const request = await waitForRequestToBeLocked(program, wallet, 100);
@@ -146,18 +153,14 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
       // Send prompt and handle streaming response
       console.log('Starting to send prompt and handle streaming...');
 
-      // Add assistant message placeholder before streaming
-      setChatMessages((messages) => [
-        ...messages,
-        { role: 'assistant', content: '' },
-      ]);
-
       await sendPrompt(request, wallet, messagesToSend, (chunk) => {
         console.log('Received chunk:', chunk);
         setChatMessages((messages) =>
           messages.map((msg, index) =>
             index === messages.length - 1
-              ? { ...msg, content: msg.content + chunk }
+              ? msg.content === '<div class="loader"></div>'
+                ? { ...msg, content: chunk }
+                : { ...msg, content: msg.content + chunk }
               : msg
           )
         );
