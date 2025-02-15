@@ -141,6 +141,12 @@ export default function Chat() {
         inputRef.current.value = "";
       }
 
+      // show loader while waiting for request to be locked
+      setChatMessages((messages) => [
+        ...messages,
+        { role: "assistant", content: '<div class="loader"></div>' },
+      ]);
+
       // Create inference request
       console.log(
         "Creating inference request with model:",
@@ -155,12 +161,6 @@ export default function Chat() {
 
       await createInferenceRequest(chainference, state.model, state.maxCost);
       console.log("Inference request created successfully");
-
-      // show loader while waiting for request to be locked
-      setChatMessages((messages) => [
-        ...messages,
-        { role: "assistant", content: '<div class="loader"></div>' },
-      ]);
 
       // Wait for request to be locked by a server
       console.log("Waiting for request to be locked...");
