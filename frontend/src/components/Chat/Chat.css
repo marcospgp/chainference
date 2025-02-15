@@ -323,24 +323,18 @@
 
 /* HTML: <div class="loader"></div> */
 .loader {
-  width: 20px;
-  aspect-ratio: 2;
-  --_g: no-repeat radial-gradient(circle closest-side, #fff 90%, #0000);
-  background: var(--_g) 0% 50%, var(--_g) 50% 50%, var(--_g) 100% 50%;
-  background-size: calc(100% / 3) 50%;
-  animation: l3 1s infinite linear;
+  position: relative;
+  top: var(--space-m);
+  margin: 0 var(--space-m) var(--space-l);
+  width: 15px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.267);
+  animation: l1 1s infinite;
 }
-@keyframes l3 {
-  20% {
-    background-position: 0% 0%, 50% 50%, 100% 50%;
-  }
-  40% {
-    background-position: 0% 100%, 50% 0%, 100% 50%;
-  }
-  60% {
-    background-position: 0% 50%, 50% 100%, 100% 0%;
-  }
-  80% {
-    background-position: 0% 50%, 50% 50%, 100% 100%;
+@keyframes l1 {
+  100% {
+    box-shadow: 0 0 0 30px #0000;
   }
 }

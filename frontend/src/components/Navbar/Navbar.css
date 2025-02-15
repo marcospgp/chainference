@@ -10,6 +10,11 @@
     margin: var(--space-m) 0;
   }
 
+  a {
+    text-decoration: none;
+    color: white;
+  }
+
   .navbar-logo {
     display: flex;
     flex-direction: row;
