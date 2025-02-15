@@ -92,17 +92,29 @@ export function closeServerOnExit(
   publicKey: PublicKey,
   program: anchor.Program<Chainference>
 ) {
+  let exiting = false;
+
   async function closeServer() {
+    if (exiting) {
+      // Force exit immediately on second attempt.
+      process.exit(1);
+    }
+
+    exiting = true;
     console.log(`\nClosing server...`);
 
-    const transaction = await program.methods
-      .closeServer()
-      .accounts({ serverAccount: publicKey })
-      .rpc();
+    try {
+      const transaction = await program.methods
+        .closeServer()
+        .accounts({ serverAccount: publicKey })
+        .rpc();
 
-    await waitForConfirmation(transaction);
-
-    process.exit(0);
+      await waitForConfirmation(transaction);
+    } catch (error) {
+      console.error("Error closing server:", error);
+    } finally {
+      process.exit(0);
+    }
   }
 
   process.on("SIGINT", closeServer);

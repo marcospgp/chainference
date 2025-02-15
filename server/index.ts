@@ -6,6 +6,11 @@ import type { IdlAccounts } from "@coral-xyz/anchor";
 import type { Chainference } from "../solana/target/types/chainference";
 import { startServer } from "./server";
 
+// Holy shit this is how you properly type a decoded program account 🤮
+// https://github.com/coral-xyz/anchor/issues/3552
+type InferenceRequestAccount =
+  IdlAccounts<Chainference>["inferenceRequestAccount"];
+
 const cli = new Command();
 
 cli
@@ -139,9 +144,7 @@ cli.action(async () => {
   chainference.provider.connection.onProgramAccountChange(
     chainference.programId,
     async (account) => {
-      // Holy shit this is how you properly type a decoded program account 🤮
-      // https://github.com/coral-xyz/anchor/issues/3552
-      let request: IdlAccounts<Chainference>["inferenceRequestAccount"];
+      let request: InferenceRequestAccount;
       try {
         request = chainference.coder.accounts.decode(
           // @ts-expect-error: _idlAccount is a private field.
@@ -149,11 +152,11 @@ cli.action(async () => {
           account.accountInfo.data
         );
       } catch (e) {
-        // Invalid account discriminator
         if (
           e instanceof Error &&
           e.message.includes("Invalid account discriminator")
         ) {
+          // This account is not of the type we are listening for.
           return;
         }
         throw e;
@@ -163,22 +166,42 @@ cli.action(async () => {
         return;
       }
 
-      if (model === request.model) {
-        console.log(
-          "Detected new not-yet-locked inference request. Locking it..."
-        );
-        const sendPromptTo = `https://ask.chainference.app/${account.accountId.toBase58()}`;
-        await chainference.methods
-          .lockRequest(sendPromptTo)
-          .accounts({
-            request: account.accountId,
-            server: server.publicKey,
-          })
-          .rpc();
-      } else {
+      if (model !== request.model) {
         console.log(
           "Detected new not-yet-locked inference request, but it has an incompatible model."
         );
+        return;
+      }
+
+      console.log(
+        "Detected new not-yet-locked inference request. Locking it..."
+      );
+
+      const sendPromptTo = `https://ask.chainference.app/${account.accountId.toBase58()}`;
+
+      const tryLockRequest = async () => {
+        try {
+          await chainference.methods
+            .lockRequest(sendPromptTo)
+            .accounts({
+              request: account.accountId,
+              server: server.publicKey,
+            })
+            .rpc();
+
+          return true;
+        } catch (e) {
+          // Sometimes we get "error: Unknown action 'undefined'".
+          if (e instanceof Error && e.message.includes("Unknown action")) {
+            return false;
+          }
+          throw e;
+        }
+      };
+
+      let success = false;
+      while (!success) {
+        success = await tryLockRequest();
       }
     }
   );
