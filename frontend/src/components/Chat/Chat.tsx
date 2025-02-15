@@ -57,16 +57,7 @@ export default function Chat() {
   const [showLoader, setShowLoader] = useState(false);
   const chainference = useChainference();
 
-  const programState =
-    chainference !== null ? useSolanaProgramListener(chainference) : [];
-  const wallet = useWallet();
-
-  const initialState = {
-    model: "",
-    maxCost: 0,
-  };
-
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const programState = useSolanaProgramListener(chainference);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -81,21 +72,46 @@ export default function Chat() {
     scrollToBottom();
   }, [chatMessages]);
 
+  const numOfServers = programState.filter(
+    (p) => p.type === "serverAccount"
+  ).length; // Replace with actual number of servers
+
+  const availableModels: Set<Model> = React.useMemo(
+    () =>
+      programState
+        .filter((p): p is ServerAccount => p.type === "serverAccount")
+        .reduce((acc, curr) => {
+          curr.data.models.forEach((model: ModelListing) => {
+            acc.add({ id: model.id, price: model.price });
+          });
+          return acc;
+        }, new Set<Model>()),
+    [programState]
+  );
+
+  const initialState = {
+    model: "",
+    maxCost: 0,
+  };
+
+  const [state, dispatch] = useReducer(reducer, initialState);
+
+  if (state.model === "" && Array.from(availableModels).length > 0) {
+    dispatch({ type: "SET_MAX_COST", payload: 0.1 });
+    dispatch({
+      type: "SET_MODEL",
+      payload: Array.from(availableModels)[0]?.id,
+    });
+  }
+
   const handleSend = async (chainference: anchor.Program<Chainference>) => {
     const inputValue = inputRef.current?.value.trim();
     if (!inputValue) return;
-
-    if (!wallet.publicKey || !wallet.signTransaction || !wallet.signMessage) {
-      setError("Please connect your wallet first");
-      return;
-    }
 
     if (!state.model || state.maxCost === 0) {
       setError("Please select a model and set a max cost first");
       return;
     }
-
-    console.log("Starting handleSend with prompt:", inputValue);
 
     try {
       // Add user message
@@ -148,14 +164,13 @@ export default function Chat() {
 
       // Wait for request to be locked by a server
       console.log("Waiting for request to be locked...");
-      const request = await waitForRequestToBeLocked(chainference, wallet, 100);
+      const request = await waitForRequestToBeLocked(chainference, 100);
       console.log("Request locked successfully:", request);
 
       // Send prompt and handle streaming response
       console.log("Starting to send prompt and handle streaming...");
 
-      await sendPrompt(request, wallet, messagesToSend, (chunk) => {
-        console.log("Received chunk:", chunk);
+      await sendPrompt(request, messagesToSend, (chunk) => {
         setChatMessages((messages) =>
           messages.map((msg, index) =>
             index === messages.length - 1
@@ -183,23 +198,6 @@ export default function Chat() {
       console.log("Chat interaction completed");
     }
   };
-
-  const numOfServers = programState.filter(
-    (p) => p.type === "serverAccount"
-  ).length; // Replace with actual number of servers
-
-  const availableModels: Set<Model> = React.useMemo(
-    () =>
-      programState
-        .filter((p): p is ServerAccount => p.type === "serverAccount")
-        .reduce((acc, curr) => {
-          curr.data.models.forEach((model: ModelListing) => {
-            acc.add({ id: model.id, price: model.price });
-          });
-          return acc;
-        }, new Set<Model>()),
-    [programState]
-  );
 
   return (
     <>
@@ -232,14 +230,14 @@ export default function Chat() {
             <div className="prompt-box">
               <div className="prompt-input">
                 <Textarea
-                  disabled={!wallet || !state.model || numOfServers === 0}
+                  // disabled={!wallet || !state.model || numOfServers === 0}
                   variant="unstyled"
                   placeholder="Why is the sky blue?"
                   ref={inputRef}
-                  error={
-                    (state?.maxCost === 0 || state?.model === "") &&
-                    "Please select a model and max cost"
-                  }
+                  // error={
+                  //   (state?.maxCost === 0 || state?.model === "") &&
+                  //   "Please select a model and max cost"
+                  // }
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
@@ -269,9 +267,7 @@ export default function Chat() {
                   justify="start"
                   align="center"
                   style={{ alignSelf: "flex-end" }}
-                >
-                  <Text size="xs">{`Max price: SOL ${state.maxCost}`}</Text>
-                </Flex>
+                ></Flex>
               </div>
             </div>
           </div>
@@ -285,7 +281,13 @@ export default function Chat() {
                   mb={"xl"}
                   justify={message.role === "assistant" ? "start" : "end"}
                 >
-                  <div className="message">
+                  <div
+                    className={`message ${
+                      message.role == "assistant"
+                        ? "assistant-message"
+                        : "user-message"
+                    }`}
+                  >
                     <TypographyStylesProvider>
                       <div
                         dangerouslySetInnerHTML={{
@@ -339,9 +341,7 @@ export default function Chat() {
                   justify="start"
                   align="center"
                   style={{ alignSelf: "flex-end" }}
-                >
-                  <Text size="xs">{`Max price: SOL ${state.maxCost}`}</Text>
-                </Flex>
+                ></Flex>
               </div>
             </div>
           </>

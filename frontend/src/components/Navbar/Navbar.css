@@ -3,7 +3,12 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  padding: var(--space-l) var(--space-xl);
+  margin: var(--space-m) var(--space-xl);
+  flex-wrap: wrap;
+
+  > div {
+    margin: var(--space-m) 0;
+  }
 
   .navbar-logo {
     display: flex;
@@ -25,6 +30,25 @@
     h1 {
       font-weight: bold;
       margin: 0;
+    }
+  }
+
+  .navbar-right {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-m);
+
+    .github-link {
+      color: white;
+      display: block;
+      line-height: 0;
+
+      svg {
+        height: 35px;
+        width: auto;
+      }
     }
   }
 

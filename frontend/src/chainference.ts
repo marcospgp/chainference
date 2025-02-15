@@ -12,14 +12,20 @@ const urlParams = new URLSearchParams(window.location.search);
 const walletParam = urlParams.get("wallet");
 
 export function useChainference(): anchor.Program<Chainference> | null {
-  let wallet: any = useAnchorWallet();
+  const adapterWallet: any = useAnchorWallet();
 
   return useMemo(() => {
-    if (!wallet && !walletParam) {
+    let wallet: any;
+
+    if (adapterWallet) {
+      wallet = adapterWallet;
+    }
+
+    if (!adapterWallet && !walletParam) {
       return null;
     }
 
-    if (!wallet && walletParam) {
+    if (!adapterWallet && walletParam) {
       const secretKey = bs58.decode(walletParam);
       const keypair = anchor.web3.Keypair.fromSecretKey(secretKey);
 
@@ -47,7 +53,7 @@ export function useChainference(): anchor.Program<Chainference> | null {
     const chainference = new anchor.Program(idl as Chainference, provider);
 
     return chainference;
-  }, [wallet]);
+  }, [adapterWallet]);
 }
 
 export type InferenceRequestAccount = {
@@ -206,13 +212,8 @@ export async function createInferenceRequest(
 
 export async function waitForRequestToBeLocked(
   chainference: anchor.Program<Chainference>,
-  wallet: { publicKey: anchor.web3.PublicKey | null },
   timeoutMs: number = 100
 ): Promise<InferenceRequestAccount> {
-  if (!wallet.publicKey) {
-    throw new Error("Wallet public key is required");
-  }
-
   let requestAccount;
 
   while (true) {
@@ -221,7 +222,7 @@ export async function waitForRequestToBeLocked(
         {
           memcmp: {
             offset: 8,
-            bytes: wallet.publicKey.toBase58(),
+            bytes: chainference.provider.publicKey!.toBase58(),
           },
         },
       ]);
@@ -281,35 +282,17 @@ export type ChatMessage = {
 
 export async function sendPrompt(
   request: InferenceRequestAccount,
-  wallet: {
-    signMessage: ((message: Uint8Array) => Promise<Uint8Array>) | undefined;
-    publicKey: anchor.web3.PublicKey | null;
-  },
   messages: ChatMessage[],
   onChunk?: (chunk: string) => void
 ): Promise<void> {
-  if (!wallet.signMessage) {
-    throw new Error("Wallet must support message signing");
-  }
-
-  if (!wallet.publicKey) {
-    throw new Error("Wallet public key is required");
-  }
-
   console.log("Signing message for account:", request.publicKey.toBase58());
-  const message = new TextEncoder().encode(request.publicKey.toBase58());
-  const signature = await wallet.signMessage(message);
-  console.log("Message signed successfully");
 
-  console.log("Messages:", messages);
+  // TODO: disabled signatures because anchor wallet can't sign messages.
+  // const message = new TextEncoder().encode(request.publicKey.toBase58());
+  // const signature = await wallet.signMessage(message);
+  // signature: Buffer.from(signature).toString("hex"),
 
-  const body = {
-    messages,
-    signature: Buffer.from(signature).toString("hex"),
-  };
-
-  console.log("Sending request to:", request.data.sendPromptTo);
-  console.log("Request body:", JSON.stringify(body));
+  const body = { messages };
 
   try {
     const response = await fetch(request.data.sendPromptTo, {
@@ -333,7 +316,7 @@ export async function sendPrompt(
       if (done) break;
 
       const chunk = decoder.decode(value, { stream: true });
-      console.log("Received chunk:", chunk);
+
       if (onChunk) {
         onChunk(chunk);
       }

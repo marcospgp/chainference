@@ -89,7 +89,7 @@ const SettingsModal = ({
           }}
         />
         <div className="settings-modal-advanced">
-          <p>Advanced (soon)</p>
+          <p>Advanced (coming soon)</p>
           <ActionIcon variant="transparent">
             <IoIosArrowDown color="white" onClick={toggle} />
           </ActionIcon>

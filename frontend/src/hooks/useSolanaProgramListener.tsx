@@ -14,15 +14,17 @@ interface AccountWithPubkey {
   data: DecodedAccount["data"];
 }
 
-const useSolanaProgramListener = (program: Program<Chainference>) => {
+const useSolanaProgramListener = (program: Program<Chainference> | null) => {
   const [state, setState] = useState<AccountWithPubkey[]>([]);
   const fetchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const isMounted = useRef(false);
   const accountListenersRef = useRef<number[]>([]);
 
   useEffect(() => {
+    if (program === null) return;
+
     isMounted.current = true;
-    const walletPublicKey = program.provider.publicKey;
+    const walletPublicKey = program.provider.publicKey!;
 
     // Helper function to set up individual account listeners
     const setupAccountListener = (accountPubkey: PublicKey) => {

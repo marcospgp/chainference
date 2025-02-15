@@ -43,24 +43,28 @@ export function startServer(
         throw e;
       }
 
-      const request = await chainference.account.inferenceRequestAccount.fetch(
-        requestAccountAddress
-      );
+      // TODO: we disabled signature validation for now, as the frontend is not able to sign
+      // messages when using a wallet provided via a url query param.
+      //
+      // const request = await chainference.account.inferenceRequestAccount.fetch(
+      //   requestAccountAddress
+      // );
+      //
+      // const signature = body["signature"];
+      //
+      // const isValid = nacl.sign.detached.verify(
+      //   new TextEncoder().encode(requestAccountAddress),
+      //   Buffer.from(signature, "hex"),
+      //   request.requester.toBytes()
+      // );
+      //
+      // if (!isValid) {
+      //   console.log(`Received prompt request with invalid signature.`);
+      //
+      //   return new Response(null, { status: 401 });
+      // }
 
-      const signature = body["signature"];
       const messages = body["messages"];
-
-      const isValid = nacl.sign.detached.verify(
-        new TextEncoder().encode(requestAccountAddress),
-        Buffer.from(signature, "hex"),
-        request.requester.toBytes()
-      );
-
-      if (!isValid) {
-        console.log(`Received prompt request with invalid signature.`);
-
-        return new Response(null, { status: 401 });
-      }
 
       console.log(
         `Received prompt request with valid signature. Sending response...`
