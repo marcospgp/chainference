@@ -95,20 +95,6 @@
     gap: var(--space-s);
     flex-wrap: wrap;
     margin-top: var(--space-s);
-
-    .settings-icon {
-      font-size: var(--font-l);
-      color: var(--color-text);
-      cursor: pointer;
-      transition: color 0.2s ease;
-      width: var(--space-m);
-      height: var(--space-m);
-      flex-shrink: 0;
-
-      &:hover {
-        color: var(--color-primary);
-      }
-    }
   }
 
   .prompt-input {
@@ -157,11 +143,7 @@
       transform: translateY(-50%);
       padding: var(--space-xs);
       border-radius: 50%;
-      background-color: color-mix(
-        in srgb,
-        var(--color-primary) 15%,
-        transparent
-      );
+      background-color: var(--color-primary);
       width: calc(var(--space-l) * 1.5);
       height: calc(var(--space-l) * 1.5);
       display: flex;
@@ -170,7 +152,11 @@
 
       &:hover {
         color: var(--color-text);
-        background-color: var(--color-primary);
+        background-color: color-mix(
+          in srgb,
+          var(--color-primary) 15%,
+          transparent
+        );
         transform: translateY(-50%) scale(1.05);
       }
 

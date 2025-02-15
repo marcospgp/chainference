@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "start": "bun run server.ts",
-    "build": "bun build src/index.html --outdir build --asset-naming \"[name].[ext]\" --chunk-naming \"[name].[ext]\"",
+    "build": "bun build src/index.html --outdir build --sourcemap=linked --asset-naming \"[name].[ext]\" --chunk-naming \"[name].[ext]\"",
     "dev": "NODE_ENV=development bun run build --watch & bun run start --watch",
     "prod": "NODE_ENV=production bun run build && bun run start"
   },
@@ -12,14 +12,15 @@
     "@mantine/core": "^7.16.1",
     "@mantine/hooks": "^7.16.1",
     "@solana/wallet-adapter-wallets": "^0.19.32",
+    "@tsconfig/strictest": "^2.0.5",
     "@types/bun": "latest",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
-    "typescript": "^5.0.0",
+    "bs58": "^6.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@tsconfig/strictest": "^2.0.5",
-    "react-icons": "^5.4.0"
+    "react-icons": "^5.4.0",
+    "typescript": "^5.0.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"

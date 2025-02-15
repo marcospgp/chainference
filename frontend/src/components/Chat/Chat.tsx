@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useReducer } from 'react';
+import React, { useState, useRef, useEffect, useReducer } from "react";
 import {
   Badge,
   Flex,
@@ -8,28 +8,27 @@ import {
   Loader,
   Notification,
   TypographyStylesProvider,
-} from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { marked } from 'marked';
-import { IoSendSharp, IoSettingsSharp, IoClose } from 'react-icons/io5';
+} from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { marked } from "marked";
+import { IoSendSharp, IoSettingsSharp, IoClose } from "react-icons/io5";
 
-import './Chat.css';
-import SettingsModal from './SettingsModal/SettingsModal';
-import type { BN, Program } from '@coral-xyz/anchor';
-import type { Chainference } from '../../../../solana/target/types/chainference';
+import "./Chat.css";
+import SettingsModal from "./SettingsModal/SettingsModal";
+import type { BN, Program } from "@coral-xyz/anchor";
+import * as anchor from "@coral-xyz/anchor";
+import type { Chainference } from "../../../../solana/target/types/chainference";
 import {
   cancelInferenceRequest,
   createInferenceRequest,
   waitForRequestToBeLocked,
   sendPrompt,
   type ChatMessage,
-} from '../../utils/chainferenceProgram';
-import useSolanaProgramListener from '../../hooks/useSolanaProgramListener';
-import type {
-  ModelListing,
-  DecodedAccount,
-} from '../../utils/chainferenceProgram';
+  useChainference,
+} from "../../chainference";
+import useSolanaProgramListener from "../../hooks/useSolanaProgramListener";
+import type { ModelListing, DecodedAccount } from "../../chainference";
 
 export type Model = {
   id: string;
@@ -38,41 +37,43 @@ export type Model = {
 
 const reducer = (state: any, action: any) => {
   switch (action.type) {
-    case 'SET_MODEL':
+    case "SET_MODEL":
       return { ...state, model: action.payload };
-    case 'SET_MAX_COST':
+    case "SET_MAX_COST":
       return { ...state, maxCost: action.payload };
     default:
       return state;
   }
 };
 
-type ServerAccount = Extract<DecodedAccount, { type: 'serverAccount' }>;
+type ServerAccount = Extract<DecodedAccount, { type: "serverAccount" }>;
 
-export default function Chat({ program }: { program: Program<Chainference> }) {
+export default function Chat() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [opened, { open, close }] = useDisclosure();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [showLoader, setShowLoader] = useState(false);
+  const chainference = useChainference();
 
-  const programState = useSolanaProgramListener(program);
+  const programState =
+    chainference !== null ? useSolanaProgramListener(chainference) : [];
   const wallet = useWallet();
 
   const initialState = {
-    model: '',
+    model: "",
     maxCost: 0,
   };
 
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const isAlreadyRequesting = React.useMemo(() => {
-    const res = programState.find((p) => p.type === 'inferenceRequestAccount');
+    const res = programState.find((p) => p.type === "inferenceRequestAccount");
     return !!res;
   }, [programState]);
 
@@ -80,26 +81,26 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
     scrollToBottom();
   }, [chatMessages]);
 
-  const handleSend = async () => {
+  const handleSend = async (chainference: anchor.Program<Chainference>) => {
     const inputValue = inputRef.current?.value.trim();
     if (!inputValue) return;
 
     if (!wallet.publicKey || !wallet.signTransaction || !wallet.signMessage) {
-      setError('Please connect your wallet first');
+      setError("Please connect your wallet first");
       return;
     }
 
     if (!state.model || state.maxCost === 0) {
-      setError('Please select a model and set a max cost first');
+      setError("Please select a model and set a max cost first");
       return;
     }
 
-    console.log('Starting handleSend with prompt:', inputValue);
+    console.log("Starting handleSend with prompt:", inputValue);
 
     try {
       // Add user message
       const newMessage: ChatMessage = {
-        role: 'user',
+        role: "user",
         content: inputValue,
       };
 
@@ -108,7 +109,7 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
 
       // Update UI with the new message
       if (chatMessages.length === 0) {
-        console.log('First message, adding with delay');
+        console.log("First message, adding with delay");
         await new Promise<void>((resolve) => {
           setTimeout(() => {
             setChatMessages([newMessage]);
@@ -121,40 +122,40 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
 
       // Clear input
       if (inputRef.current) {
-        inputRef.current.value = '';
+        inputRef.current.value = "";
       }
 
       // Create inference request
       console.log(
-        'Creating inference request with model:',
+        "Creating inference request with model:",
         state.model,
-        'maxCost:',
+        "maxCost:",
         state.maxCost
       );
 
       if (isAlreadyRequesting) {
-        await cancelInferenceRequest(program);
+        await cancelInferenceRequest(chainference);
       }
 
-      await createInferenceRequest(program, state.model, state.maxCost);
-      console.log('Inference request created successfully');
+      await createInferenceRequest(chainference, state.model, state.maxCost);
+      console.log("Inference request created successfully");
 
       // show loader while waiting for request to be locked
       setChatMessages((messages) => [
         ...messages,
-        { role: 'assistant', content: '<div class="loader"></div>' },
+        { role: "assistant", content: '<div class="loader"></div>' },
       ]);
 
       // Wait for request to be locked by a server
-      console.log('Waiting for request to be locked...');
-      const request = await waitForRequestToBeLocked(program, wallet, 100);
-      console.log('Request locked successfully:', request);
+      console.log("Waiting for request to be locked...");
+      const request = await waitForRequestToBeLocked(chainference, wallet, 100);
+      console.log("Request locked successfully:", request);
 
       // Send prompt and handle streaming response
-      console.log('Starting to send prompt and handle streaming...');
+      console.log("Starting to send prompt and handle streaming...");
 
       await sendPrompt(request, wallet, messagesToSend, (chunk) => {
-        console.log('Received chunk:', chunk);
+        console.log("Received chunk:", chunk);
         setChatMessages((messages) =>
           messages.map((msg, index) =>
             index === messages.length - 1
@@ -166,7 +167,7 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
         );
       });
     } catch (error) {
-      console.error('Error in chat:', error);
+      console.error("Error in chat:", error);
       // Remove any pending response messages
       setChatMessages(
         (messages) => messages.slice(0, -1) // Remove the last message which would be the incomplete assistant response
@@ -176,21 +177,21 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
       setError(
         error instanceof Error
           ? error.message
-          : 'An error occurred while processing your request'
+          : "An error occurred while processing your request"
       );
     } finally {
-      console.log('Chat interaction completed');
+      console.log("Chat interaction completed");
     }
   };
 
   const numOfServers = programState.filter(
-    (p) => p.type === 'serverAccount'
+    (p) => p.type === "serverAccount"
   ).length; // Replace with actual number of servers
 
   const availableModels: Set<Model> = React.useMemo(
     () =>
       programState
-        .filter((p): p is ServerAccount => p.type === 'serverAccount')
+        .filter((p): p is ServerAccount => p.type === "serverAccount")
         .reduce((acc, curr) => {
           curr.data.models.forEach((model: ModelListing) => {
             acc.add({ id: model.id, price: model.price });
@@ -204,10 +205,10 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
     <>
       {error && (
         <Notification
-          color='red'
-          title='Error'
+          color="red"
+          title="Error"
           onClose={() => setError(null)}
-          style={{ position: 'fixed', top: 20, right: 20, zIndex: 1000 }}
+          style={{ position: "fixed", top: 20, right: 20, zIndex: 1000 }}
         >
           {error}
         </Notification>
@@ -222,64 +223,74 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
       />
       <div
         className={`prompt ${
-          chatMessages.length > 0 ? 'has-messages' : 'empty'
+          chatMessages.length > 0 ? "has-messages" : "empty"
         }`}
       >
         {chatMessages.length === 0 ? (
           <div>
-            <h1 className='prompt-title'>Prompt the blockchain</h1>
-            <div className='prompt-box'>
-              <div className='prompt-input'>
+            <h1 className="prompt-title">Prompt the blockchain</h1>
+            <div className="prompt-box">
+              <div className="prompt-input">
                 <Textarea
                   disabled={!wallet || !state.model || numOfServers === 0}
-                  variant='unstyled'
-                  placeholder='Why is the sky blue?'
+                  variant="unstyled"
+                  placeholder="Why is the sky blue?"
                   ref={inputRef}
                   error={
-                    (state?.maxCost === 0 || state?.model === '') &&
-                    'Please select a model and max cost'
+                    (state?.maxCost === 0 || state?.model === "") &&
+                    "Please select a model and max cost"
                   }
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      handleSend();
+                      if (chainference !== null) {
+                        handleSend(chainference);
+                      }
                     }
                   }}
                 />
-                <IoSendSharp className='send-icon' onClick={handleSend} />
+                <IoSendSharp
+                  className="send-icon"
+                  onClick={() => {
+                    if (chainference !== null) {
+                      handleSend(chainference);
+                    }
+                  }}
+                />
               </div>
-              <div className='prompt-info'>
-                <Badge size='lg' className='clickable' onClick={open}>
+              <div className="prompt-info">
+                <Badge size="lg" className="clickable" onClick={open}>
                   {`${
                     numOfServers > 0 ? `🟢 ` : `🔴 `
                   }${numOfServers} / ${numOfServers} servers matched`}
                 </Badge>
                 <Flex
                   flex={1}
-                  justify='start'
-                  align='center'
-                  style={{ alignSelf: 'flex-end' }}
+                  justify="start"
+                  align="center"
+                  style={{ alignSelf: "flex-end" }}
                 >
-                  <Text size='xs'>{`Max price: SOL ${state.maxCost}`}</Text>
+                  <Text size="xs">{`Max price: SOL ${state.maxCost}`}</Text>
                 </Flex>
               </div>
             </div>
           </div>
         ) : (
           <>
-            <ScrollArea className='messages-container'>
+            <ScrollArea className="messages-container">
               {chatMessages.map((message, index) => (
                 <Flex
                   flex={1}
                   key={index}
-                  mb={'xl'}
-                  justify={message.role === 'assistant' ? 'start' : 'end'}
+                  mb={"xl"}
+                  justify={message.role === "assistant" ? "start" : "end"}
                 >
-                  <div className='message'>
+                  <div className="message">
                     <TypographyStylesProvider>
                       <div
                         dangerouslySetInnerHTML={{
-                          __html: marked.parse(message.content),
+                          // @ts-expect-error
+                          __html: marked.parse(message.content, {}),
                         }}
                       />
                     </TypographyStylesProvider>
@@ -288,39 +299,48 @@ export default function Chat({ program }: { program: Program<Chainference> }) {
               ))}
               <div ref={messagesEndRef} />
             </ScrollArea>
-            <div className='prompt-box'>
-              <div className='prompt-input'>
+            <div className="prompt-box">
+              <div className="prompt-input">
                 <Textarea
-                  variant='unstyled'
+                  variant="unstyled"
                   style={{ flex: 1 }}
-                  placeholder='Continue the conversation...'
+                  placeholder="Continue the conversation..."
                   ref={inputRef}
                   error={
-                    (state?.maxCost === 0 || state?.model === '') &&
-                    'Please set a model and max cost'
+                    (state?.maxCost === 0 || state?.model === "") &&
+                    "Please set a model and max cost"
                   }
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      handleSend();
+                      if (chainference !== null) {
+                        handleSend(chainference);
+                      }
                     }
                   }}
                 />
-                <IoSendSharp className='send-icon' onClick={handleSend} />
+                <IoSendSharp
+                  className="send-icon"
+                  onClick={() => {
+                    if (chainference !== null) {
+                      handleSend(chainference);
+                    }
+                  }}
+                />
               </div>
-              <div className='prompt-info'>
-                <Badge size='lg' className='clickable' onClick={open}>
+              <div className="prompt-info">
+                <Badge size="lg" className="clickable" onClick={open}>
                   {`${
                     numOfServers > 0 ? `🟢 ` : `🔴 `
                   }${numOfServers} / ${numOfServers} servers matched`}
                 </Badge>
                 <Flex
                   flex={1}
-                  justify='start'
-                  align='center'
-                  style={{ alignSelf: 'flex-end' }}
+                  justify="start"
+                  align="center"
+                  style={{ alignSelf: "flex-end" }}
                 >
-                  <Text size='xs'>{`Max price: SOL ${state.maxCost}`}</Text>
+                  <Text size="xs">{`Max price: SOL ${state.maxCost}`}</Text>
                 </Flex>
               </div>
             </div>

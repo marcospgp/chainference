@@ -12,9 +12,7 @@ import Navbar from "./components/Navbar/Navbar";
 import Chat from "./components/Chat/Chat";
 import ChatHistory from "./components/ChatHistory/ChatHistory";
 import { Wallet } from "./components/Wallet";
-import { AnchorProvider, Program, setProvider } from "@coral-xyz/anchor";
-import type { Chainference } from "../../solana/target/types/chainference";
-import idl from "../../solana/target/idl/chainference.json";
+import { AnchorProvider, setProvider } from "@coral-xyz/anchor";
 import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
 
 const App = () => {
@@ -26,15 +24,13 @@ const App = () => {
 
   setProvider(new AnchorProvider(connection, wallet!, {}));
 
-  const program = new Program(idl as Chainference) as Program<Chainference>;
-
   return (
     <MantineProvider theme={createTheme({})} defaultColorScheme="dark">
       <Navbar />
       <div className="main">
         <div className="chat-container">
           <ChatHistory opened={opened} onClose={close} />
-          <Chat program={program} />
+          <Chat />
         </div>
       </div>
     </MantineProvider>

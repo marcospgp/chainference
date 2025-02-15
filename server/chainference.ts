@@ -28,7 +28,5 @@ export async function loadChainference(
 
   const chainference = new anchor.Program(idl as Chainference, provider);
 
-  chainference.provider;
-
   return chainference;
 }
